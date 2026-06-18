@@ -759,7 +759,7 @@ async def admin_reply_any(message: Message, bot: Bot):
     try:
         await bot.send_message(
             user_id,
-            "a voice returns from the other side of darkness:",
+            "_a voice returns from the other side of darkness:_",
             parse_mode="Markdown"
         )
         await bot.copy_message(
@@ -769,8 +769,8 @@ async def admin_reply_any(message: Message, bot: Bot):
         )
         await bot.send_message(
             user_id,
-            "_the dark spoke. now you may —\nreply, if you have something to say._",
-            parse_mode="Markdown",
+            "_the dark spoke\\. now you may —\n*reply*, if you have something to say\\._",
+            parse_mode="MarkdownV2"
         )
         await message.answer("✔ delivered into the dark")
     except Exception as e:
