@@ -760,6 +760,7 @@ async def admin_reply_any(message: Message, bot: Bot):
         await bot.send_message(
             user_id,
             "a voice returns from the other side of darkness:",
+            parse_mode="Markdown"
         )
         await bot.copy_message(
             chat_id=user_id,
