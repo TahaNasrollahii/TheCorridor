@@ -723,9 +723,53 @@ async def admin_reply(message: Message, bot: Bot):
             user_id,
             f"a voice returns from the other side of darkness:\n\n{reply_text}\n\n"
             f"─────────────────\n"
-            f"_the dark spoke. now you may —\n"
-            f"***reply***, if you have something to say._",
+            f"the dark spoke. now you may —\n"
+            f"reply, if you have something to say.",
             parse_mode="Markdown"
+        )
+        await message.answer("✔ delivered into the dark")
+    except Exception as e:
+        await message.answer(f"❌ error:\n{e}")
+
+
+# ================== ADMIN REPLY (ANY CONTENT) ==================
+@router.message(F.reply_to_message, F.from_user.id == ADMIN_ID)
+async def admin_reply_any(message: Message, bot: Bot):
+    """Admin replies (Telegram native reply) to an archive message with ANY
+    content — text, photo(s), video, voice, document, etc. — and it is carried
+    back to the sender, wrapped in the dark framing."""
+    replied = message.reply_to_message
+    replied_text = replied.text or replied.caption or ""
+    if "Sender:" not in replied_text:
+        return
+
+    user_id = None
+    for line in replied_text.split("\n"):
+        if "Sender:" in line:
+            after = line.split("Sender:")[1].strip()
+            try:
+                user_id = int(after.split(" ")[0])
+            except ValueError:
+                user_id = None
+            break
+
+    if not user_id:
+        return
+
+    try:
+        await bot.send_message(
+            user_id,
+            "a voice returns from the other side of darkness:",
+        )
+        await bot.copy_message(
+            chat_id=user_id,
+            from_chat_id=message.chat.id,
+            message_id=message.message_id,
+        )
+        await bot.send_message(
+            user_id,
+            "_the dark spoke. now you may —\nreply, if you have something to say._",
+            parse_mode="Markdown",
         )
         await message.answer("✔ delivered into the dark")
     except Exception as e:
