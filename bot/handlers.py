@@ -404,7 +404,7 @@ async def deliver_to_keeper(
         pass
 
     confirm = random.choice(NIGHT_CONFIRM_MESSAGES if is_night else CONFIRM_MESSAGES)
-    await bot.send_message(chat_id, confirm)
+    await bot.send_message(chat_id, confirm, reply_markup=corridor_keyboard())
 
 
 async def get_stats_text(store: Store) -> str:
@@ -1290,6 +1290,8 @@ async def reply_keyboard_dispatch(
         await my_archive(message, store)
     elif command == "help":
         await help_command(message)
+
+    await message.answer("·", reply_markup=corridor_keyboard())
 
 
 # ================== USER → ADMIN ==================
