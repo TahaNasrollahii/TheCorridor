@@ -13,7 +13,10 @@ The conversational copy and behaviour are otherwise identical.
 """
 
 import random
+import re
 from datetime import datetime, timedelta, timezone
+
+import jdatetime
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
@@ -100,6 +103,93 @@ def get_now_info() -> tuple[str, str, bool]:
     is_night = now.hour in NIGHT_HOURS
     full_time = f"{time_str} — {date_str} — {season}"
     return full_time, date_str, is_night
+
+
+# Persian (۰-۹) and Arabic-Indic (٠-٩) digits → ASCII, so users can type
+# their date however their keyboard produces it.
+_DIGIT_MAP = {
+    **{ord("۰") + i: str(i) for i in range(10)},
+    **{ord("٠") + i: str(i) for i in range(10)},
+}
+
+# Persian month names, in order, so people can write the month as a word.
+_PERSIAN_MONTHS = {
+    "فروردین": 1, "اردیبهشت": 2, "خرداد": 3,
+    "تیر": 4, "مرداد": 5, "شهریور": 6,
+    "مهر": 7, "آبان": 8, "آذر": 9,
+    "دی": 10, "بهمن": 11, "اسفند": 12,
+}
+
+
+def normalize_digits(text: str) -> str:
+    return text.translate(_DIGIT_MAP)
+
+
+def parse_persian_countdown(raw: str) -> tuple[datetime, str]:
+    """Parse a flexible Persian-calendar countdown line into (target_utc, label).
+
+    Accepts the date and label separated by ``|`` or just whitespace, the date
+    written with any of ``- / . ‏`` (or spaces) between parts, Persian/Arabic or
+    ASCII digits, and the month as a number or a Persian month name. Examples
+    that all work::
+
+        1405/03/29 | پایان سال
+        ۱۴۰۵-۱۰-۱۱ the end of the year
+        29 خرداد 1405
+
+    Raises ``ValueError`` if the date can't be understood.
+    """
+    text = normalize_digits(raw).strip()
+
+    # Split the label off: explicit "|" wins, otherwise everything after the
+    # date tokens is the label.
+    label = ""
+    if "|" in text:
+        date_part, label = text.split("|", 1)
+    else:
+        date_part = text
+
+    tokens = [t for t in re.split(r"[\s\-/.،]+", date_part.strip()) if t]
+
+    nums: list[int] = []
+    month_from_name: int | None = None
+    leftover: list[str] = []
+    for tok in tokens:
+        if tok.isdigit():
+            nums.append(int(tok))
+        elif tok in _PERSIAN_MONTHS:
+            month_from_name = _PERSIAN_MONTHS[tok]
+        else:
+            leftover.append(tok)
+
+    # If a month name was used, the two remaining numbers are day and year.
+    if month_from_name is not None:
+        if len(nums) != 2:
+            raise ValueError("need a day and a year alongside the month name")
+        a, b = nums
+        # Year is the 4-digit one (or the larger); the other is the day.
+        year, day = (a, b) if a > 31 else (b, a)
+        month = month_from_name
+    else:
+        if len(nums) != 3:
+            raise ValueError("need year, month and day")
+        year, month, day = nums
+
+    jdate = jdatetime.date(year, month, day)  # raises ValueError if invalid
+    gdate = jdate.togregorian()
+    target = datetime(gdate.year, gdate.month, gdate.day, tzinfo=timezone.utc)
+
+    # If "|" wasn't used, any non-date words become the label.
+    if not label.strip() and leftover:
+        label = " ".join(leftover)
+
+    return target, label.strip() or "the unnamed moment"
+
+
+def jalali_str(dt: datetime) -> str:
+    """A Gregorian datetime formatted as a Persian (Jalali) date string."""
+    j = jdatetime.date.fromgregorian(date=dt.date())
+    return j.strftime("%Y/%m/%d")
 
 
 def vow_days_left(vow: dict) -> int:
@@ -483,13 +573,18 @@ async def letter_receive(message: Message, state: FSMContext, bot: Bot, store: S
 @router.message(Command("countdown"))
 async def countdown_start(message: Message, state: FSMContext):
     await state.set_state(CountdownState.waiting)
+    today = jalali_str(datetime.now(timezone.utc))
     await message.answer(
         "⏳\n\n"
         "name a moment you are counting toward.\n\n"
-        "write it like this:\n"
-        "YYYY-MM-DD | what it is\n\n"
-        "example:\n"
-        "2026-12-31 | the end of this year"
+        "give the date in the Persian calendar — however you like:\n"
+        "  • ۱۴۰۵/۱۰/۱۱\n"
+        "  • 1405-10-11\n"
+        "  • 11 دی 1405\n\n"
+        "then, if you wish, name it after the date or a “|”.\n\n"
+        "for example:\n"
+        "۱۴۰۵/۱۰/۱۱ پایان سال\n\n"
+        f"(today is {today})"
     )
 
 
@@ -497,46 +592,49 @@ async def countdown_start(message: Message, state: FSMContext):
 async def countdown_receive(message: Message, state: FSMContext):
     await state.clear()
 
-    if not message.text or "|" not in message.text:
+    if not message.text:
         await message.answer(
-            "❌ the format was lost in the dark.\n\ntry again:\nYYYY-MM-DD | what it is"
+            "❌ the moment was lost in the dark.\n\n"
+            "name a Persian-calendar date, like:\n"
+            "۱۴۰۵/۱۰/۱۱ پایان سال"
         )
         return
 
     try:
-        parts = message.text.split("|", 1)
-        date_part = parts[0].strip()
-        label = parts[1].strip() if len(parts) > 1 else "the unnamed moment"
-        target = datetime.strptime(date_part, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-
-        if target < now:
-            await message.answer(
-                f"⏳ __{label}__\n\n"
-                f"that moment has already passed.\n"
-                f"it lives behind you now —\n"
-                f"in the part of the corridor you can no longer see."
-            )
-            return
-
-        delta = target - now
-        days = delta.days
-        hours, remainder = divmod(delta.seconds, 3600)
-        minutes = remainder // 60
-
-        await message.answer(
-            f"⏳ __{label}__\n\n"
-            f"{days} days, {hours} hours, and {minutes} minutes\n"
-            f"stand between you and that moment.\n\n"
-            f"the dark is already counting."
-        )
-
+        target, label = parse_persian_countdown(message.text)
     except ValueError:
         await message.answer(
             "❌ the date couldn't be read.\n\n"
-            "use this format exactly:\n"
-            "YYYY-MM-DD | what it is"
+            "write a Persian-calendar date — year, month, day — like:\n"
+            "۱۴۰۵/۱۰/۱۱  ·  1405-10-11  ·  11 دی 1405"
         )
+        return
+
+    now = datetime.now(timezone.utc)
+    target_jalali = jalali_str(target)
+
+    if target < now:
+        await message.answer(
+            f"⏳ __{label}__\n"
+            f"🗓️ {target_jalali}\n\n"
+            f"that moment has already passed.\n"
+            f"it lives behind you now —\n"
+            f"in the part of the corridor you can no longer see."
+        )
+        return
+
+    delta = target - now
+    days = delta.days
+    hours, remainder = divmod(delta.seconds, 3600)
+    minutes = remainder // 60
+
+    await message.answer(
+        f"⏳ __{label}__\n"
+        f"🗓️ {target_jalali}\n\n"
+        f"{days} days, {hours} hours, and {minutes} minutes\n"
+        f"stand between you and that moment.\n\n"
+        f"the dark is already counting."
+    )
 
 
 # ================== VOW ==================
