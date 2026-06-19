@@ -428,9 +428,9 @@ async def ritual_q4(message: Message, state: FSMContext, bot: Bot, store: Store)
 
     await message.answer(
         "🕯️ the ritual is complete.\n\n"
-        "what you gave has been received.\n"
-        "the corridor holds it now —\n"
-        "sealed, nameless, and still."
+        "what you gave has been received and kept.\n"
+        "the corridor holds it in the dark —\n"
+        "a secret that has never wept."
     )
 
 

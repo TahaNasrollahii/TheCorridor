@@ -121,9 +121,9 @@ VOW_DAYS_ERROR = (
 
 VOW_SAVED_TEXT = (
     "🕯️ the vow is sealed.\n\n"
-    "it rests in the dark now, counting down.\n"
-    "when the days run out, the corridor will return\n"
-    "to remind you of what you swore."
+    "it sleeps in the dark, cold and deep.\n"
+    "when the days run out, the corridor returns —\n"
+    "to wake the promise you were meant to keep."
 )
 
 VOW_KEPT_TEXT = (
