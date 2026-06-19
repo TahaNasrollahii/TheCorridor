@@ -160,3 +160,28 @@ class Store:
             "letters": int(letters or 0),
             "first_seen": first_seen,
         }
+
+    # ----- inbox thread (Mini App conversation with the keeper) -----
+    # A per-user list of the back-and-forth: the words the soul carried in
+    # ("out") and the keeper's answers ("in"). Keeper replies are appended here
+    # *in addition to* being sent as bot messages, so the app can show a thread
+    # while the chat keeps working exactly as before.
+    THREAD_MAX = 200
+
+    async def add_thread_message(self, uid: int, entry: dict) -> None:
+        key = f"{PREFIX}:thread:{uid}"
+        await self.r.rpush(key, json.dumps(entry))
+        await self.r.ltrim(key, -self.THREAD_MAX, -1)
+
+    async def get_thread(self, uid: int) -> list[dict]:
+        raw = await self.r.lrange(f"{PREFIX}:thread:{uid}", 0, -1)
+        return [json.loads(x) for x in raw]
+
+    async def incr_unread(self, uid: int) -> None:
+        await self.r.incr(f"{PREFIX}:thread_unread:{uid}")
+
+    async def get_unread(self, uid: int) -> int:
+        return int(await self.r.get(f"{PREFIX}:thread_unread:{uid}") or 0)
+
+    async def clear_unread(self, uid: int) -> None:
+        await self.r.delete(f"{PREFIX}:thread_unread:{uid}")

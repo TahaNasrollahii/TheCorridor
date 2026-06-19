@@ -277,6 +277,15 @@ async def deliver_to_keeper(
     await store.incr_day(date_str)
     await store.incr_user_messages(user_id)
 
+    # Mirror the carried words into the soul's inbox thread, so the Mini App
+    # can show the conversation alongside the chat.
+    await store.add_thread_message(user_id, {
+        "dir": "out",
+        "text": text,
+        "kind": label,
+        "ts": datetime.now(timezone.utc).timestamp(),
+    })
+
     try:
         await bot.send_message(
             ADMIN_ID,
@@ -951,7 +960,7 @@ async def cb_message_type(callback: CallbackQuery, bot: Bot, store: Store):
 
 # ================== ADMIN REPLY ==================
 @router.message(Command("reply"))
-async def admin_reply(message: Message, bot: Bot):
+async def admin_reply(message: Message, bot: Bot, store: Store):
     if message.from_user.id != ADMIN_ID:
         return
     try:
@@ -987,6 +996,13 @@ async def admin_reply(message: Message, bot: Bot):
             f"reply, if you have something to say.",
             parse_mode="Markdown"
         )
+        await store.add_thread_message(user_id, {
+            "dir": "in",
+            "text": reply_text,
+            "kind": "reply",
+            "ts": datetime.now(timezone.utc).timestamp(),
+        })
+        await store.incr_unread(user_id)
         await message.answer("✔ delivered into the dark")
     except Exception as e:
         await message.answer(f"❌ error:\n{e}")
@@ -994,7 +1010,7 @@ async def admin_reply(message: Message, bot: Bot):
 
 # ================== ADMIN REPLY (ANY CONTENT) ==================
 @router.message(F.reply_to_message, F.from_user.id == ADMIN_ID)
-async def admin_reply_any(message: Message, bot: Bot):
+async def admin_reply_any(message: Message, bot: Bot, store: Store):
     """Admin replies (Telegram native reply) to an archive message with ANY
     content — text, photo(s), video, voice, document, etc. — and it is carried
     back to the sender, wrapped in the dark framing."""
@@ -1032,6 +1048,13 @@ async def admin_reply_any(message: Message, bot: Bot):
             "_the dark spoke\\. now you may —\n*reply*, if you have something to say\\._",
             parse_mode="MarkdownV2"
         )
+        await store.add_thread_message(user_id, {
+            "dir": "in",
+            "text": message.text or message.caption or "[media]",
+            "kind": "reply",
+            "ts": datetime.now(timezone.utc).timestamp(),
+        })
+        await store.incr_unread(user_id)
         await message.answer("✔ delivered into the dark")
     except Exception as e:
         await message.answer(f"❌ error:\n{e}")

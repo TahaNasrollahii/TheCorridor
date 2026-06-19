@@ -1,0 +1,767 @@
+/* ============================================================
+   the corridor — design system
+   Dark, candlelit, gothic-modern. Serif for voice, sans for UI.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Inter:wght@300;400;500;600&family=Vazirmatn:wght@300;400;500&display=swap');
+
+:root {
+  /* palette */
+  --bg: #08080b;
+  --bg-grad-top: #15141b;
+  --surface: #101017;
+  --surface-2: #15141d;
+  --ink: #e8e6ea;
+  --ink-dim: #a6a2ad;
+  --ink-faint: #6a6675;
+  --ember: #c0563f;
+  --ember-soft: #b14b3a;
+  --ember-glow: rgba(192, 86, 63, 0.32);
+  --line: rgba(232, 230, 234, 0.07);
+  --line-strong: rgba(232, 230, 234, 0.13);
+
+  /* type */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-fa: 'Vazirmatn', var(--font-body);
+
+  /* metrics */
+  --radius: 16px;
+  --radius-sm: 12px;
+  --pad: 1.25rem;
+
+  /* safe areas (Telegram fullscreen) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 300;
+  line-height: 1.55;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:lang(fa) {
+  font-family: var(--font-fa);
+  direction: rtl;
+}
+/* font only — pair with dir="auto" so mixed Persian/English aligns correctly */
+.fa {
+  font-family: var(--font-fa);
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* ---- shared atmosphere ---- */
+.ember {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ember-glow) 0%, transparent 68%);
+  filter: blur(14px);
+  animation: breathe 6.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; transform: translateX(-50%) scale(1); }
+  50% { opacity: 0.78; transform: translateX(-50%) scale(1.12); }
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.7rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-shadow: 0 0 26px var(--ember-glow);
+}
+
+.whisper {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.12rem;
+  color: var(--ink-dim);
+  margin: 0;
+}
+.whisper.error { color: #cf8275; }
+.reason {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-style: normal;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+}
+
+/* ============================================================
+   boot / fallback (Boot component)
+   ============================================================ */
+.corridor {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.8rem;
+  padding: 2rem;
+  background: radial-gradient(120% 80% at 50% -10%, var(--bg-grad-top) 0%, var(--bg) 55%);
+  overflow: hidden;
+}
+
+/* ============================================================
+   app shell + screen transition
+   ============================================================ */
+.app {
+  position: relative;
+  min-height: 100%;
+  background: radial-gradient(130% 70% at 50% -8%, var(--bg-grad-top) 0%, var(--bg) 50%);
+}
+
+.view {
+  min-height: 100%;
+  animation: fade-up 0.42s ease both;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   home / the corridor
+   ============================================================ */
+.home {
+  position: relative;
+  min-height: 100%;
+  padding:
+    calc(var(--safe-top) + 2.75rem)
+    var(--pad)
+    calc(var(--safe-bottom) + 2.25rem);
+  z-index: 1;
+}
+
+.hero {
+  position: relative;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  z-index: 1;
+}
+
+.candle {
+  font-size: 1.9rem;
+  filter: drop-shadow(0 0 14px var(--ember-glow));
+  animation: flicker 3.4s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 0.92; }
+  45% { opacity: 1; }
+  55% { opacity: 0.7; }
+  70% { opacity: 0.95; }
+}
+
+.hero .title {
+  margin: 0.4rem 0 0.55rem;
+}
+.hero .whisper {
+  font-size: 1rem;
+}
+
+/* doors */
+.doors {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.section-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 0.7rem 0.35rem;
+}
+
+.door-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.door {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: border-color 0.25s ease, transform 0.18s ease, background 0.25s ease;
+  animation: door-in 0.5s ease both;
+}
+
+@keyframes door-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.door:active {
+  transform: scale(0.985);
+  border-color: var(--line-strong);
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+}
+
+.door-glyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  background: radial-gradient(circle at 50% 40%, rgba(192, 86, 63, 0.16), transparent 70%);
+  border: 1px solid var(--line);
+}
+
+.door-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.door-title {
+  font-family: var(--font-display);
+  font-size: 1.32rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+.door-sub {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.door-chevron {
+  flex: 0 0 auto;
+  font-size: 1.3rem;
+  color: var(--ink-faint);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+.door:active .door-chevron {
+  color: var(--ember);
+  transform: translateX(2px);
+}
+
+.home-foot {
+  text-align: center;
+  margin-top: 2.75rem;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+}
+.name { color: var(--ink-dim); }
+.keeper { color: var(--ember); }
+
+/* ============================================================
+   screen (feature pages)
+   ============================================================ */
+.screen {
+  position: relative;
+  min-height: 100%;
+  padding:
+    calc(var(--safe-top) + 2rem)
+    var(--pad)
+    calc(var(--safe-bottom) + 2rem);
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.screen-head {
+  position: relative;
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.back {
+  position: absolute;
+  top: -0.25rem;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.back:active {
+  color: var(--ember);
+  border-color: var(--line-strong);
+}
+
+.screen-glyph {
+  font-size: 1.7rem;
+  filter: drop-shadow(0 0 12px var(--ember-glow));
+}
+.screen-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 2.05rem;
+  letter-spacing: 0.02em;
+  margin: 0.35rem 0 0.3rem;
+}
+.screen-sub {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--ink-dim);
+  margin: 0;
+}
+
+.screen-body {
+  position: relative;
+}
+
+/* ============================================================
+   shared screen building blocks
+   ============================================================ */
+.prompt {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  text-align: center;
+  margin: 0 0 1.5rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.75rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 11rem;
+  padding: 0.85rem 1.6rem;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  transition: transform 0.16s ease, box-shadow 0.25s ease, opacity 0.2s ease,
+    border-color 0.2s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.btn-primary {
+  color: #f6e9e5;
+  background: linear-gradient(180deg, var(--ember) 0%, var(--ember-soft) 100%);
+  box-shadow: 0 6px 26px var(--ember-glow);
+}
+.btn-primary:active {
+  box-shadow: 0 3px 16px var(--ember-glow);
+}
+
+.btn-ghost {
+  color: var(--ink-dim);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+
+.field {
+  width: 100%;
+  padding: 0.95rem 1.1rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.field::placeholder {
+  color: var(--ink-faint);
+}
+.field:focus {
+  border-color: var(--ember-soft);
+  box-shadow: 0 0 0 3px var(--ember-glow);
+}
+
+/* the revealed "voice" of the corridor — a quote, a fortune, a reflection */
+.revelation {
+  position: relative;
+  margin: 1.75rem 0 0;
+  padding: 1.5rem 1.4rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.4rem;
+  line-height: 1.5;
+  color: var(--ink);
+  text-align: center;
+  white-space: pre-line;
+  background: radial-gradient(120% 100% at 50% 0%, rgba(192, 86, 63, 0.07), transparent 70%);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.revelation-label {
+  margin: 1.75rem 0 -0.5rem;
+  text-align: center;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.reveal {
+  animation: reveal 0.7s ease both;
+}
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* mood chips */
+.chips {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.7rem;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--ink-dim);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.chip:active {
+  transform: scale(0.97);
+}
+.chip.active {
+  border-color: var(--ember-soft);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ember-glow), 0 6px 22px var(--ember-glow);
+}
+.chip-glyph {
+  font-size: 1.2rem;
+}
+.chips-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.chips-3 .chip {
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+/* ---- speak ---- */
+.area {
+  min-height: 8.5rem;
+  resize: none;
+  line-height: 1.5;
+  font-weight: 300;
+}
+.field-hint {
+  margin: 1.4rem 0 0.7rem;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.02rem;
+  color: var(--ink-dim);
+}
+
+/* ---- inbox thread ---- */
+.center {
+  text-align: center;
+  margin-top: 2.5rem;
+}
+.empty {
+  margin-top: 2.75rem;
+  text-align: center;
+  white-space: pre-line;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+.bubble {
+  max-width: 82%;
+  padding: 0.75rem 0.95rem;
+  border-radius: 16px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  animation: reveal 0.5s ease both;
+}
+.bubble-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bubble-meta {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.bubble.out {
+  align-self: flex-end;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-bottom-right-radius: 5px;
+}
+.bubble.in {
+  align-self: flex-start;
+  color: #f4e8e4;
+  background: linear-gradient(180deg, rgba(192, 86, 63, 0.22), rgba(177, 75, 58, 0.12));
+  border: 1px solid rgba(192, 86, 63, 0.3);
+  border-bottom-left-radius: 5px;
+}
+.bubble.in .bubble-meta {
+  color: rgba(244, 232, 228, 0.6);
+}
+
+/* ---- inbox badge on the home door ---- */
+.door-badge {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f6e9e5;
+  background: var(--ember);
+  border-radius: 999px;
+  box-shadow: 0 0 12px var(--ember-glow);
+}
+
+/* ---- shared small bits ---- */
+.muted {
+  color: var(--ink-faint);
+  font-size: 0.85rem;
+}
+.tall {
+  min-height: 12rem;
+}
+
+/* ---- ritual steps ---- */
+.step-marks {
+  display: flex;
+  justify-content: center;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+.step-mark {
+  display: grid;
+  place-items: center;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 0.4rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+.step-mark.past {
+  color: var(--ink-dim);
+  border-color: var(--line-strong);
+}
+.step-mark.on {
+  color: #f6e9e5;
+  border-color: var(--ember-soft);
+  box-shadow: 0 0 14px var(--ember-glow);
+}
+
+/* ---- countdown ---- */
+.count-result {
+  margin-top: 2rem;
+  text-align: center;
+}
+.count-label {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.6rem;
+  color: var(--ink);
+  margin: 0;
+}
+.count-date {
+  color: var(--ink-faint);
+  font-size: 0.9rem;
+  margin: 0.3rem 0 1.4rem;
+}
+.count-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.7rem;
+  margin-bottom: 1.25rem;
+}
+.count-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 1rem 0.4rem;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.count-num {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: var(--ember);
+  line-height: 1;
+  text-shadow: 0 0 18px var(--ember-glow);
+}
+.count-unit-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---- alias ---- */
+.name-given {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-style: normal;
+  font-size: 1.5rem;
+  color: var(--ember);
+}
+
+/* ---- archive ---- */
+.stat-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.stat:last-child {
+  border-bottom: none;
+}
+.stat-glyph {
+  font-size: 1.05rem;
+}
+.stat-label {
+  flex: 1 1 auto;
+  font-size: 0.86rem;
+  color: var(--ink-dim);
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--ink);
+  text-align: right;
+}
+
+.vow-card {
+  margin-top: 1.25rem;
+  padding: 1.25rem 1.1rem;
+  background: radial-gradient(120% 100% at 50% 0%, rgba(192, 86, 63, 0.08), transparent 70%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.archive-foot {
+  margin-top: 2rem;
+  text-align: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+/* ============================================================
+   misc
+   ============================================================ */
+.devnote {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  opacity: 0.55;
+  z-index: 5;
+}
