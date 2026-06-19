@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import Button from '../components/Button.jsx'
 import Screen from '../components/Screen.jsx'
-import { call } from '../lib/api.js'
+import { call, track } from '../lib/api.js'
 import { DOOR } from '../lib/doors.js'
 import { notify } from '../lib/telegram.js'
 
@@ -23,6 +23,7 @@ export default function Alias({ onBack }) {
     setLoading(true)
     try {
       const r = await call('alias_set', { alias: alias.trim() })
+      track('took a new alias')
       setSaved(r.alias)
       notify('success')
     } catch {

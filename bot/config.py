@@ -17,3 +17,8 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 # Shared secret guarding the /api/cron endpoint. An external scheduler
 # (cron-job.org) must send it as `Authorization: Bearer <CRON_SECRET>`.
 CRON_SECRET = os.getenv("CRON_SECRET", "")
+
+# Public URL of the deployed Mini App (e.g. https://your-project.vercel.app).
+# Used to add a "open the corridor" button to the reply keyboard. Leave blank
+# and that button is simply omitted.
+WEBAPP_URL = os.getenv("WEBAPP_URL", "")

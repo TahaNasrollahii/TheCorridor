@@ -15,6 +15,8 @@ and a lock serializes the shared event loop so it is never run concurrently.
 """
 
 import asyncio
+import base64
+import binascii
 import json
 import os
 import random
@@ -27,6 +29,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aiogram import Bot  # noqa: E402
+from aiogram.types import BufferedInputFile  # noqa: E402
 
 from bot.config import ADMIN_ID, TOKEN  # noqa: E402
 from bot.handlers import (  # noqa: E402
@@ -36,6 +39,7 @@ from bot.handlers import (  # noqa: E402
     vow_days_left,
 )
 from bot.storage import Store, make_redis  # noqa: E402
+from bot.timeutil import tehran_stamp  # noqa: E402
 from bot.texts import (  # noqa: E402
     CONFIRM_MESSAGES,
     DARK_QUOTES,
@@ -108,16 +112,70 @@ async def _mirror(user: dict, payload: dict) -> dict:
     return {"response": matched}
 
 
+# A media payload, once base64-decoded, must stay well under Vercel's ~4.5 MB
+# request-body limit (base64 adds ~33%). We reject anything larger server-side;
+# the client enforces the same ceiling before uploading.
+MAX_MEDIA_BYTES = 3_000_000
+
+# kind -> (aiogram send method name, the kwarg it expects, default filename)
+_MEDIA_SENDERS = {
+    "photo": ("send_photo", "photo", "photo.jpg"),
+    "video": ("send_video", "video", "video.mp4"),
+    "voice": ("send_voice", "voice", "voice.ogg"),
+}
+
+
+def _decode_media(media: dict) -> tuple[str, bytes, str]:
+    """Validate a media payload → (kind, raw_bytes, filename). Raises ValueError."""
+    kind = (media.get("kind") or "").lower()
+    if kind not in _MEDIA_SENDERS:
+        raise ValueError("unsupported media kind")
+
+    data = media.get("data") or ""
+    if "," in data and data.lstrip().startswith("data:"):
+        data = data.split(",", 1)[1]  # strip a data: URL prefix if present
+    try:
+        raw = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError("media is not valid base64")
+
+    if not raw:
+        raise ValueError("empty media")
+    if len(raw) > MAX_MEDIA_BYTES:
+        raise ValueError("media too large")
+
+    filename = (media.get("filename") or _MEDIA_SENDERS[kind][2])[:80]
+    return kind, raw, filename
+
+
+async def _deliver_media_to_keeper(kind: str, raw: bytes, filename: str, caption: str) -> None:
+    """Send an attachment to the keeper, falling back to a plain document if the
+    typed method rejects it (e.g. a recorded voice clip that isn't OGG/opus)."""
+    method_name, kwarg, _ = _MEDIA_SENDERS[kind]
+    file = BufferedInputFile(raw, filename=filename)
+    try:
+        await getattr(_bot, method_name)(ADMIN_ID, **{kwarg: file}, caption=caption)
+    except Exception:  # noqa: BLE001 — last resort so the attachment is never lost
+        await _bot.send_document(
+            ADMIN_ID,
+            document=BufferedInputFile(raw, filename=filename),
+            caption=caption,
+        )
+
+
 async def _send(user: dict, payload: dict) -> dict:
     """Carry a message to the keeper, the way the bot's type-picker does — but
-    from the web app. Records the same stats, notifies the keeper, and mirrors
-    the message into the soul's inbox thread. Returns a confirmation to show."""
+    from the web app. Optionally carries one attachment (photo/video/voice).
+    Records the same stats, notifies the keeper, mirrors the message into the
+    soul's inbox thread, and returns a confirmation to show."""
     uid = user["id"]
-    text = (payload.get("text") or "").strip()
-    if not text:
-        raise ValueError("empty message")
-    if len(text) > 4000:
-        text = text[:4000]
+    text = (payload.get("text") or "").strip()[:4000]
+
+    media = payload.get("media")
+    decoded = _decode_media(media) if media else None
+
+    if not text and not decoded:
+        raise ValueError("nothing to send")
 
     msg_type = payload.get("type") or "just_words"
     label = MESSAGE_TYPES.get(msg_type, MESSAGE_TYPES["just_words"])
@@ -139,24 +197,35 @@ async def _send(user: dict, payload: dict) -> dict:
     await _store.incr_day(date_str)
     await _store.incr_user_messages(uid)
 
+    attach_line = f"📎 carries a {decoded[0]}\n" if decoded else ""
     try:
         await _bot.send_message(
             ADMIN_ID,
             f"📩 {label}  #{counter}\n\n"
             f"👤 Sender: {uid} (@{username})\n"
             f"{alias_line}"
-            f"💬 Carried: {text}\n"
+            f"💬 Carried: {text or '—'}\n"
+            f"{attach_line}"
             f"🕰️ {full_time}\n"
             f"🌐 via the corridor (mini app)\n\n"
             f"To answer:\n/reply {uid} your message",
         )
+        if decoded:
+            kind, raw, filename = decoded
+            # Caption repeats the Sender line so the keeper can reply by replying
+            # to the attachment itself (admin_reply_any reads "Sender:" from it).
+            await _deliver_media_to_keeper(
+                kind, raw, filename,
+                caption=f"📎 {label} #{counter}\n👤 Sender: {uid} (@{username})",
+            )
     except Exception as exc:  # noqa: BLE001
-        print(f"app send: keeper notify failed: {exc}", file=sys.stderr)
+        print(f"app send: keeper delivery failed: {exc}", file=sys.stderr)
 
     await _store.add_thread_message(uid, {
         "dir": "out",
-        "text": text,
+        "text": text,  # caption only; the media kind below carries the rest
         "kind": label,
+        "media": decoded[0] if decoded else None,
         "ts": datetime.now(timezone.utc).timestamp(),
     })
 
@@ -321,6 +390,42 @@ async def _archive(user: dict, payload: dict) -> dict:
     return {"alias": alias, "stats": stats, "vow": vow_out}
 
 
+async def _unread(user: dict, payload: dict) -> dict:
+    """Just the unread count — cheap enough to poll for the live inbox badge."""
+    return {"unread": await _store.get_unread(user["id"])}
+
+
+async def _activity(user: dict, payload: dict) -> dict:
+    """Tell the keeper a soul did something in the app. Fire-and-forget from the
+    client; the keeper is never told about their own moves (mirrors the bot's
+    activity middleware)."""
+    uid = user["id"]
+    if uid == ADMIN_ID:
+        return {}
+
+    label = (payload.get("label") or "stirred").strip()[:120]
+    username = user.get("username")
+    name = f"@{username}" if username else (user.get("first_name") or "a nameless soul")
+    alias = await _store.get_alias(uid)
+    alias_line = f"🪦 {alias}\n" if alias else ""
+    when = tehran_stamp()
+
+    notice = (
+        "👁️ a soul stirs in the corridor · app\n"
+        "─────────────────\n"
+        f"👤 {name}\n"
+        f"🆔 {uid}\n"
+        f"{alias_line}"
+        f"✦ {label}\n"
+        f"🕰️ {when}"
+    )
+    try:
+        await _bot.send_message(ADMIN_ID, notice)
+    except Exception as exc:  # noqa: BLE001
+        print(f"app activity: notify failed: {exc}", file=sys.stderr)
+    return {}
+
+
 ACTIONS = {
     "me": _me,
     "dark": _dark,
@@ -338,6 +443,8 @@ ACTIONS = {
     "alias_get": _alias_get,
     "alias_set": _alias_set,
     "archive": _archive,
+    "unread": _unread,
+    "activity": _activity,
 }
 
 

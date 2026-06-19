@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import Placeholder from './components/Placeholder.jsx'
-import { call } from './lib/api.js'
+import { call, track } from './lib/api.js'
+import { DOOR } from './lib/doors.js'
 import { SCREENS } from './lib/screens.jsx'
 import { isDev, setBackButton } from './lib/telegram.js'
 import Home from './screens/Home.jsx'
@@ -16,7 +17,10 @@ export default function App() {
   const [error, setError] = useState('')
   const [stack, setStack] = useState(['home'])
 
-  const navigate = useCallback((key) => setStack((s) => [...s, key]), [])
+  const navigate = useCallback((key) => {
+    track(`entered ${DOOR[key]?.title || key}`)
+    setStack((s) => [...s, key])
+  }, [])
   const back = useCallback(
     () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),
     [],
@@ -47,6 +51,34 @@ export default function App() {
       setMe((m) => (m && m.unread ? { ...m, unread: 0 } : m))
     }
   }, [current])
+
+  // Near-real-time inbox badge: poll the unread count on an interval and
+  // immediately whenever the app regains focus. Serverless can't push, so this
+  // light poll is the closest thing — cheap (just a count) and self-correcting.
+  useEffect(() => {
+    if (boot !== 'ready') return undefined
+    let alive = true
+    const poll = async () => {
+      try {
+        const r = await call('unread')
+        if (alive && typeof r.unread === 'number') {
+          setMe((m) => (m ? { ...m, unread: r.unread } : m))
+        }
+      } catch {
+        /* ignore — the next tick will try again */
+      }
+    }
+    const id = setInterval(poll, 15000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') poll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      alive = false
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [boot])
 
   if (boot === 'loading') return <Boot>the dark stirs…</Boot>
   if (boot === 'error') {

@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import Button from '../components/Button.jsx'
 import Screen from '../components/Screen.jsx'
-import { call } from '../lib/api.js'
+import { call, track } from '../lib/api.js'
 import { DOOR } from '../lib/doors.js'
 import { notify } from '../lib/telegram.js'
 
@@ -19,6 +19,7 @@ export default function Mirror({ onBack }) {
     try {
       const r = await call('mirror', { word: w })
       setResponse(r.response)
+      track('looked into the mirror')
       notify('success')
     } catch {
       /* ignore */

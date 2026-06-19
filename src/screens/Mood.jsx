@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 import Screen from '../components/Screen.jsx'
-import { call } from '../lib/api.js'
+import { call, track } from '../lib/api.js'
 import { DOOR } from '../lib/doors.js'
 import { haptic, notify } from '../lib/telegram.js'
 
@@ -26,6 +26,7 @@ export default function Mood({ onBack }) {
     try {
       const r = await call('mood', { mood: mood.key })
       setResponse(r.response)
+      track(`chose the mood: ${mood.label}`)
       notify('success')
     } catch {
       /* ignore */

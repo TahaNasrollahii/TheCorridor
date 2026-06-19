@@ -10,7 +10,10 @@
       "Bash(TOKEN=123:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 python -c ' *)",
       "Bash(TOKEN=123456:fakeTokenForImportCheck ADMIN_ID=1 REDIS_URL=redis://localhost:6379 python -c ' *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(TOKEN=123:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 WEBAPP_URL=https://vercel-inc-bot.vercel.app python -c ' *)",
+      "Bash(TOKEN=123456:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(TOKEN=123456:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 WEBAPP_URL=https://x.vercel.app PYTHONIOENCODING=utf-8 python -c ' *)"
     ]
   }
 }

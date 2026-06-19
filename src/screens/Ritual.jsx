@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import Button from '../components/Button.jsx'
 import Screen from '../components/Screen.jsx'
-import { call } from '../lib/api.js'
+import { call, track } from '../lib/api.js'
 import { DOOR } from '../lib/doors.js'
 import { notify } from '../lib/telegram.js'
 
@@ -39,6 +39,7 @@ export default function Ritual({ onBack }) {
     setLoading(true)
     try {
       await call('ritual', { answers: filled })
+      track('completed the ritual')
       setDone(true)
       notify('success')
     } catch {

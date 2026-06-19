@@ -6,6 +6,12 @@
 
 import { getInitData, isDev } from './telegram.js'
 
+// Fire-and-forget activity ping to the keeper. Never blocks the UI or surfaces
+// errors — if it fails, the action the user took still happened.
+export function track(label) {
+  call('activity', { label }).catch(() => {})
+}
+
 export async function call(action, payload = {}) {
   if (isDev) {
     await new Promise((r) => setTimeout(r, 250)) // fake a little latency
@@ -62,7 +68,9 @@ function devMock(action, payload = {}) {
         ok: true,
         messages: [
           { dir: 'out', text: 'i don’t know why i came here.', kind: '🌑 JUST WORDS', ts: 1718700000 },
+          { dir: 'out', text: '', media: 'voice', kind: '🩸 CONFESSION', ts: 1718700300 },
           { dir: 'in', text: 'no one ever does. that’s how they find it.', kind: 'reply', ts: 1718703600 },
+          { dir: 'in', text: '', media: 'photo', kind: 'reply', ts: 1718703900 },
         ],
       }
     case 'ritual_questions':
@@ -104,6 +112,10 @@ function devMock(action, payload = {}) {
         stats: { messages: 7, rituals: 1, letters: 2, first_seen: '2026-02-14' },
         vow: { text: 'i will stop waiting for permission to begin.', days_left: 23 },
       }
+    case 'unread':
+      return { ok: true, unread: 0 }
+    case 'activity':
+      return { ok: true }
     default:
       throw new Error(`no dev mock for "${action}"`)
   }

@@ -26,12 +26,16 @@ from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    KeyboardButton,
     Message,
     ReactionTypeEmoji,
+    ReplyKeyboardMarkup,
+    WebAppInfo,
 )
 
-from bot.config import ADMIN_ID
+from bot.config import ADMIN_ID, WEBAPP_URL
 from bot.storage import Store
+from bot.timeutil import tehran_now, tehran_stamp
 from bot.texts import (
     CHAT_TEXT,
     CONFIRM_MESSAGES,
@@ -88,6 +92,27 @@ def get_text(message: Message) -> str:
     return message.text or message.caption or "[MEDIA]"
 
 
+def media_kind(message: Message) -> str | None:
+    """The kind of attachment a message carries, for inbox display — or None."""
+    if message.photo:
+        return "photo"
+    if message.video:
+        return "video"
+    if message.voice:
+        return "voice"
+    if message.audio:
+        return "audio"
+    if message.animation:
+        return "animation"
+    if message.video_note:
+        return "video"
+    if message.sticker:
+        return "sticker"
+    if message.document:
+        return "document"
+    return None
+
+
 def get_season(month: int) -> str:
     for months, label in SEASONS.items():
         if month in months:
@@ -96,8 +121,8 @@ def get_season(month: int) -> str:
 
 
 def get_now_info() -> tuple[str, str, bool]:
-    now = datetime.now(timezone.utc)
-    time_str = now.strftime("%H:%M UTC")
+    now = tehran_now()
+    time_str = now.strftime("%H:%M Tehran")
     date_str = now.strftime("%Y-%m-%d")
     season = get_season(now.month)
     is_night = now.hour in NIGHT_HOURS
@@ -220,6 +245,57 @@ def main_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
+# ================== REPLY KEYBOARD ==================
+# A persistent keyboard beneath the message box. Telegram does not allow custom
+# colors or animated/custom emoji on reply-keyboard buttons, so the aesthetic
+# comes from static emoji + the corridor's voice in the labels. Tapping a button
+# sends its label as plain text; ``REPLY_LABELS`` maps each label back to the
+# command its handler already implements.
+REPLY_LABELS = {
+    "🌑 a dark quote": "dark",
+    "🔮 a fortune": "fortune",
+    "🌫️ the mood": "mood",
+    "🪞 the mirror": "mirror",
+    "🕯️ the ritual": "ritual",
+    "📜 a letter": "letter",
+    "🩸 a vow": "vow",
+    "⏳ a countdown": "countdown",
+    "🪦 your alias": "alias",
+    "📖 your archive": "myarchive",
+    "👁️ the guide": "help",
+}
+
+
+def corridor_keyboard() -> ReplyKeyboardMarkup:
+    """The persistent dark keyboard. A web-app launch button leads the rows when
+    a WEBAPP_URL is configured (reply-keyboard buttons may open Mini Apps)."""
+    rows: list[list[KeyboardButton]] = []
+
+    if WEBAPP_URL:
+        rows.append([
+            KeyboardButton(
+                text="🚪 open the corridor",
+                web_app=WebAppInfo(url=WEBAPP_URL),
+            )
+        ])
+
+    rows += [
+        [KeyboardButton(text="🌑 a dark quote"), KeyboardButton(text="🔮 a fortune")],
+        [KeyboardButton(text="🌫️ the mood"), KeyboardButton(text="🪞 the mirror")],
+        [KeyboardButton(text="🕯️ the ritual"), KeyboardButton(text="📜 a letter")],
+        [KeyboardButton(text="🩸 a vow"), KeyboardButton(text="⏳ a countdown")],
+        [KeyboardButton(text="🪦 your alias"), KeyboardButton(text="📖 your archive")],
+        [KeyboardButton(text="👁️ the guide")],
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=rows,
+        resize_keyboard=True,
+        is_persistent=True,
+        input_field_placeholder="speak into the dark…",
+    )
+
+
 def admin_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -266,6 +342,7 @@ async def deliver_to_keeper(
     message_id: int,
     text: str,
     label: str,
+    media: str | None = None,
 ) -> None:
     """Carry one message to the keeper: notify, forward, react, confirm."""
     alias = await store.get_alias(user_id)
@@ -278,11 +355,13 @@ async def deliver_to_keeper(
     await store.incr_user_messages(user_id)
 
     # Mirror the carried words into the soul's inbox thread, so the Mini App
-    # can show the conversation alongside the chat.
+    # can show the conversation alongside the chat. The bare "[MEDIA]" sentinel
+    # becomes an empty caption — the media kind carries the meaning instead.
     await store.add_thread_message(user_id, {
         "dir": "out",
-        "text": text,
+        "text": "" if text == "[MEDIA]" else text,
         "kind": label,
+        "media": media,
         "ts": datetime.now(timezone.utc).timestamp(),
     })
 
@@ -319,7 +398,7 @@ async def deliver_to_keeper(
 
 
 async def get_stats_text(store: Store) -> str:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = tehran_now().strftime("%Y-%m-%d")
     today_count = await store.get_day(today)
     days = await store.all_days()
     if days:
@@ -330,7 +409,7 @@ async def get_stats_text(store: Store) -> str:
     counter = await store.get_counter()
     senders = await store.senders_count()
     blocked = await store.blocked_count()
-    refreshed_at = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
+    refreshed_at = tehran_now().strftime("%H:%M:%S Tehran")
     return (
         f"📜 the dark archive speaks:\n\n"
         f"📩 total messages received: {counter}\n"
@@ -373,6 +452,13 @@ async def start(message: Message, state: FSMContext, bot: Bot, store: Store):
     else:
         await store.add_returning(user.id)
         await message.answer(START_TEXT, reply_markup=main_keyboard())
+
+    # Install the persistent dark keyboard beneath the message box. A separate
+    # message because a single message can carry only one reply_markup.
+    await message.answer(
+        "the corridor opens beneath you.\nchoose a door — or simply speak. 🕯️",
+        reply_markup=corridor_keyboard(),
+    )
 
 
 # ================== HELP ==================
@@ -582,7 +668,7 @@ async def letter_receive(message: Message, state: FSMContext, bot: Bot, store: S
 @router.message(Command("countdown"))
 async def countdown_start(message: Message, state: FSMContext):
     await state.set_state(CountdownState.waiting)
-    today = jalali_str(datetime.now(timezone.utc))
+    today = jalali_str(tehran_now())
     await message.answer(
         "⏳\n\n"
         "name a moment you are counting toward.\n\n"
@@ -868,7 +954,7 @@ async def cb_admin_archive(callback: CallbackQuery, store: Store):
     else:
         daily_list = "nothing yet"
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    today = tehran_now().strftime("%Y-%m-%d")
     today_count = await store.get_day(today)
 
     archive_text = (
@@ -955,6 +1041,7 @@ async def cb_message_type(callback: CallbackQuery, bot: Bot, store: Store):
         message_id=int(pending["message_id"]),
         text=pending.get("text") or "[MEDIA]",
         label=label,
+        media=pending.get("media") or None,
     )
 
 
@@ -1050,14 +1137,57 @@ async def admin_reply_any(message: Message, bot: Bot, store: Store):
         )
         await store.add_thread_message(user_id, {
             "dir": "in",
-            "text": message.text or message.caption or "[media]",
+            "text": message.text or message.caption or "",
             "kind": "reply",
+            "media": media_kind(message),
             "ts": datetime.now(timezone.utc).timestamp(),
         })
         await store.incr_unread(user_id)
         await message.answer("✔ delivered into the dark")
     except Exception as e:
         await message.answer(f"❌ error:\n{e}")
+
+
+# ================== REPLY KEYBOARD DISPATCH ==================
+@router.message(F.text.in_(REPLY_LABELS))
+async def reply_keyboard_dispatch(
+    message: Message, state: FSMContext, bot: Bot, store: Store
+):
+    """A tap on the persistent keyboard arrives as the label's plain text. Route
+    it to the same handler the matching command uses, so the keyboard and the
+    slash commands behave identically.
+
+    Sits before ``handle_all`` so these labels are never mistaken for an
+    anonymous message. It does, however, respect an in-progress flow: if the
+    user is mid-ritual/letter/vow/countdown, the text is their answer, so we
+    fall through and let the FSM handler take it.
+    """
+    if await state.get_state() is not None:
+        return await handle_all(message, state, bot, store)
+
+    command = REPLY_LABELS[message.text]
+    if command == "dark":
+        await dark_quote(message)
+    elif command == "fortune":
+        await fortune(message)
+    elif command == "mood":
+        await mood(message)
+    elif command == "mirror":
+        await mirror(message, state)
+    elif command == "ritual":
+        await ritual_start(message, state)
+    elif command == "letter":
+        await letter_start(message, state)
+    elif command == "vow":
+        await vow_start(message, state, store)
+    elif command == "countdown":
+        await countdown_start(message, state)
+    elif command == "alias":
+        await set_alias(message, store)
+    elif command == "myarchive":
+        await my_archive(message, store)
+    elif command == "help":
+        await help_command(message)
 
 
 # ================== USER → ADMIN ==================
@@ -1087,6 +1217,7 @@ async def handle_all(message: Message, state: FSMContext, bot: Bot, store: Store
             message_id=message.message_id,
             text=get_text(message),
             label="↩️ REPLY",
+            media=media_kind(message),
         )
         return
 
@@ -1095,6 +1226,7 @@ async def handle_all(message: Message, state: FSMContext, bot: Bot, store: Store
         "message_id": str(message.message_id),
         "text": get_text(message),
         "username": message.from_user.username or "no_username",
+        "media": media_kind(message) or "",
     })
     await message.answer(
         "before it arrives —\nwhat does this carry? 🩸",

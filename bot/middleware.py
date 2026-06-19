@@ -15,7 +15,6 @@ It deliberately stays quiet for:
     them here too would only double up.
 """
 
-from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
@@ -24,6 +23,7 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 from bot.config import ADMIN_ID
 from bot.storage import Store
 from bot.texts import CALLBACK_ACTIVITY, COMMAND_ACTIVITY
+from bot.timeutil import tehran_stamp
 
 
 def _command_of(message: Message) -> str | None:
@@ -42,7 +42,7 @@ async def _notify(bot: Any, store: Store, user: Any, action: str) -> None:
     name = f"@{user.username}" if user.username else (user.full_name or "a nameless soul")
     alias = await store.get_alias(user.id)
     alias_line = f"🪦 {alias}\n" if alias else ""
-    when = datetime.now(timezone.utc).strftime("%H:%M:%S UTC · %Y-%m-%d")
+    when = tehran_stamp()
 
     notice = (
         "👁️ a soul stirs in the corridor\n"

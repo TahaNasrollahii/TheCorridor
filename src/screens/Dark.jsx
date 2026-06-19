@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import Button from '../components/Button.jsx'
 import Screen from '../components/Screen.jsx'
-import { call } from '../lib/api.js'
+import { call, track } from '../lib/api.js'
 import { DOOR } from '../lib/doors.js'
 import { notify } from '../lib/telegram.js'
 
@@ -16,6 +16,7 @@ export default function Dark({ onBack }) {
     try {
       const r = await call('dark')
       setQuote(r.quote)
+      track('drew a dark quote')
       notify('success')
     } catch {
       /* the void stayed silent */
