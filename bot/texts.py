@@ -221,7 +221,7 @@ HELP_TEXT = (
     "📖 /help — you are here.\n\n"
     "— no names leave this place.\n"
     "— no faces are kept.\n"
-    "— only what you chose to leave behind."
+    "— only the words you whispered and wept."
 )
 
 START_TEXT = (
