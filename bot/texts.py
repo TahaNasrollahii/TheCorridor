@@ -176,6 +176,7 @@ COMMAND_ACTIVITY = {
 
 # Each reply-keyboard label and what tapping it means.
 REPLY_ACTIVITY = {
+    "✒️ speak": '✒️ tapped "speak"',
     "🌑 a dark quote": '🌑 tapped "a dark quote"',
     "🔮 a fortune": '🔮 tapped "a fortune"',
     "🌫️ the mood": '🌫️ tapped "the mood"',
@@ -276,7 +277,8 @@ CHAT_TEXT = (
 # (legacy Markdown can't nest). `{reply}` must be MarkdownV2-escaped first —
 # use escape_md_v2() at the call site.
 KEEPER_REPLY_TEXT = (
-    "_a voice returns from the other side of darkness:_\n\n"
+    "_a voice returns from the other side of darkness:_\n"
+    "─────────────────\n\n"
     "{reply}\n\n"
     "─────────────────\n"
     "_the dark spoke\\. now you may —_\n"
