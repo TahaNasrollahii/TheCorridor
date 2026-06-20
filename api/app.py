@@ -44,6 +44,9 @@ from bot.texts import (  # noqa: E402
     CONFIRM_MESSAGES,
     DARK_QUOTES,
     FORTUNES,
+    KEEPER_REPLY_INTRO,
+    KEEPER_REPLY_OUTRO,
+    KEEPER_REPLY_TEXT,
     MESSAGE_TYPES,
     MIRROR_RESPONSES,
     MOOD_RESPONSES,
@@ -60,6 +63,34 @@ _lock = threading.Lock()
 _redis = make_redis()
 _store = Store(_redis)
 _bot = Bot(token=TOKEN)
+
+
+class Forbidden(Exception):
+    """A non-keeper tried to reach a keeper-only action → HTTP 403."""
+
+
+def _require_admin(user: dict) -> None:
+    """Gate keeper-only actions. ``user`` is the HMAC-verified identity, never
+    a value from the request body, so this cannot be spoofed by the client."""
+    if user["id"] != ADMIN_ID:
+        raise Forbidden("the keeper's sight is not yours to take")
+
+
+def _full_name(first: str | None, last: str | None) -> str | None:
+    """Telegram first + last name into one display name (or None if neither)."""
+    return " ".join(p for p in (first, last) if p) or None
+
+
+async def _fetch_identity(uid: int) -> dict:
+    """Look up a soul's current name/username from Telegram and cache it — used to
+    backfill old chats whose identity we never recorded. Never raises."""
+    try:
+        chat = await _bot.get_chat(uid)
+        ident = {"name": _full_name(chat.first_name, chat.last_name), "username": chat.username}
+    except Exception:  # noqa: BLE001 — a deleted/blocking soul just shows as their id
+        ident = {"name": None, "username": None}
+    await _store.set_identity(uid, ident["name"], ident["username"])
+    return ident
 
 
 # ================== ACTION HANDLERS ==================
@@ -148,16 +179,17 @@ def _decode_media(media: dict) -> tuple[str, bytes, str]:
     return kind, raw, filename
 
 
-async def _deliver_media_to_keeper(kind: str, raw: bytes, filename: str, caption: str) -> None:
-    """Send an attachment to the keeper, falling back to a plain document if the
-    typed method rejects it (e.g. a recorded voice clip that isn't OGG/opus)."""
+async def _deliver_media(chat_id: int, kind: str, raw: bytes, filename: str, caption: str) -> None:
+    """Send an attachment to a chat (the keeper, or a soul receiving a reply),
+    falling back to a plain document if the typed method rejects it (e.g. a
+    recorded voice clip that isn't OGG/opus)."""
     method_name, kwarg, _ = _MEDIA_SENDERS[kind]
     file = BufferedInputFile(raw, filename=filename)
     try:
-        await getattr(_bot, method_name)(ADMIN_ID, **{kwarg: file}, caption=caption)
+        await getattr(_bot, method_name)(chat_id, **{kwarg: file}, caption=caption)
     except Exception:  # noqa: BLE001 — last resort so the attachment is never lost
         await _bot.send_document(
-            ADMIN_ID,
+            chat_id,
             document=BufferedInputFile(raw, filename=filename),
             caption=caption,
         )
@@ -196,6 +228,10 @@ async def _send(user: dict, payload: dict) -> dict:
     await _store.add_sender(uid)
     await _store.incr_day(date_str)
     await _store.incr_user_messages(uid)
+    # Keep the keeper's chat-list label fresh for active souls.
+    await _store.set_identity(
+        uid, _full_name(user.get("first_name"), user.get("last_name")), user.get("username")
+    )
 
     attach_line = f"📎 carries a {decoded[0]}\n" if decoded else ""
     try:
@@ -214,8 +250,8 @@ async def _send(user: dict, payload: dict) -> dict:
             kind, raw, filename = decoded
             # Caption repeats the Sender line so the keeper can reply by replying
             # to the attachment itself (admin_reply_any reads "Sender:" from it).
-            await _deliver_media_to_keeper(
-                kind, raw, filename,
+            await _deliver_media(
+                ADMIN_ID, kind, raw, filename,
                 caption=f"📎 {label} #{counter}\n👤 Sender: {uid} (@{username})",
             )
     except Exception as exc:  # noqa: BLE001
@@ -426,6 +462,97 @@ async def _activity(user: dict, payload: dict) -> dict:
     return {}
 
 
+# ================== KEEPER CONSOLE (admin-only) ==================
+
+async def _admin_threads(user: dict, payload: dict) -> dict:
+    """Every conversation, newest first, for the keeper's chat list. A thread is
+    flagged ``new`` when the last word in it came from the soul (``out``) — i.e.
+    the keeper hasn't answered yet."""
+    _require_admin(user)
+
+    identities = await _store.all_identities()  # cached names, one round-trip
+
+    threads = []
+    for uid in await _store.all_thread_uids():
+        tail = await _store.thread_tail(uid)
+        if not tail:
+            continue
+        # Backfill any soul whose identity we haven't cached yet (old chats).
+        ident = identities.get(uid) or await _fetch_identity(uid)
+        threads.append({
+            "uid": uid,
+            "name": ident.get("name"),
+            "username": ident.get("username"),
+            "alias": await _store.get_alias(uid),
+            "last_text": tail.get("text") or "",
+            "last_kind": tail.get("kind"),
+            "last_media": tail.get("media"),
+            "last_dir": tail.get("dir"),
+            "ts": tail.get("ts") or 0,
+            "new": tail.get("dir") == "out",
+        })
+
+    threads.sort(key=lambda t: t["ts"], reverse=True)
+    return {"threads": threads}
+
+
+async def _admin_thread(user: dict, payload: dict) -> dict:
+    """The full history of one soul's conversation — the same back-and-forth the
+    soul sees in their own inbox."""
+    _require_admin(user)
+    try:
+        uid = int(payload.get("uid"))
+    except (TypeError, ValueError):
+        raise ValueError("which soul?")
+    return {
+        "uid": uid,
+        "alias": await _store.get_alias(uid),
+        "messages": await _store.get_thread(uid),
+    }
+
+
+async def _admin_reply(user: dict, payload: dict) -> dict:
+    """The keeper answers a soul from the console — text and/or one attachment.
+    Mirrors the bot's /reply and native-reply handlers exactly: the answer is
+    delivered to the soul's chat AND mirrored into their in-app inbox thread,
+    and their unread badge is bumped."""
+    _require_admin(user)
+    try:
+        uid = int(payload.get("uid"))
+    except (TypeError, ValueError):
+        raise ValueError("which soul?")
+
+    text = (payload.get("text") or "").strip()[:4000]
+    media = payload.get("media")
+    decoded = _decode_media(media) if media else None
+
+    if not text and not decoded:
+        raise ValueError("nothing to send")
+
+    if decoded:
+        kind, raw, filename = decoded
+        # Wrap the attachment in the same three-part dark framing as a native
+        # Telegram reply: intro line, the media (caption = the keeper's words),
+        # then the outro line.
+        await _bot.send_message(uid, KEEPER_REPLY_INTRO, parse_mode="Markdown")
+        await _deliver_media(uid, kind, raw, filename, caption=text or None)
+        await _bot.send_message(uid, KEEPER_REPLY_OUTRO, parse_mode="MarkdownV2")
+    else:
+        await _bot.send_message(
+            uid, KEEPER_REPLY_TEXT.format(reply=text), parse_mode="Markdown"
+        )
+
+    await _store.add_thread_message(uid, {
+        "dir": "in",
+        "text": text,
+        "kind": "reply",
+        "media": decoded[0] if decoded else None,
+        "ts": datetime.now(timezone.utc).timestamp(),
+    })
+    await _store.incr_unread(uid)
+    return {}
+
+
 ACTIONS = {
     "me": _me,
     "dark": _dark,
@@ -445,6 +572,9 @@ ACTIONS = {
     "archive": _archive,
     "unread": _unread,
     "activity": _activity,
+    "admin_threads": _admin_threads,
+    "admin_thread": _admin_thread,
+    "admin_reply": _admin_reply,
 }
 
 
@@ -495,6 +625,8 @@ class handler(BaseHTTPRequestHandler):
             with _lock:
                 result = _loop.run_until_complete(_dispatch(action, user, body))
             self._json(200, {"ok": True, **result})
+        except Forbidden as exc:
+            self._json(403, {"ok": False, "error": str(exc)})
         except ValueError as exc:
             self._json(400, {"ok": False, "error": str(exc)})
         except Exception as exc:  # noqa: BLE001

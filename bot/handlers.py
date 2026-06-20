@@ -45,6 +45,9 @@ from bot.texts import (
     DARK_REACTIONS,
     FORTUNES,
     HELP_TEXT,
+    KEEPER_REPLY_INTRO,
+    KEEPER_REPLY_OUTRO,
+    KEEPER_REPLY_TEXT,
     MESSAGE_TYPES,
     MIRROR_RESPONSES,
     MOOD_RESPONSES,
@@ -1179,10 +1182,7 @@ async def admin_reply(message: Message, bot: Bot, store: Store):
 
         await bot.send_message(
             user_id,
-            f"a voice returns from the other side of darkness:\n\n{reply_text}\n\n"
-            f"─────────────────\n"
-            f"the dark spoke. now you may —\n"
-            f"reply, if you have something to say.",
+            KEEPER_REPLY_TEXT.format(reply=reply_text),
             parse_mode="Markdown"
         )
         await store.add_thread_message(user_id, {
@@ -1224,7 +1224,7 @@ async def admin_reply_any(message: Message, bot: Bot, store: Store):
     try:
         await bot.send_message(
             user_id,
-            "_a voice returns from the other side of darkness:_",
+            KEEPER_REPLY_INTRO,
             parse_mode="Markdown"
         )
         await bot.copy_message(
@@ -1234,7 +1234,7 @@ async def admin_reply_any(message: Message, bot: Bot, store: Store):
         )
         await bot.send_message(
             user_id,
-            "_the dark spoke\\. now you may —\n*reply*, if you have something to say\\._",
+            KEEPER_REPLY_OUTRO,
             parse_mode="MarkdownV2"
         )
         await store.add_thread_message(user_id, {

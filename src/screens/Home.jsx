@@ -10,6 +10,9 @@ export default function Home({ me, navigate }) {
 
   let index = 0
 
+  // Admin-only sections (the keeper's console) are hidden from ordinary souls.
+  const sections = SECTIONS.filter((s) => !s.admin || me?.is_admin)
+
   return (
     <div className="home">
       <div className="ember" aria-hidden="true" />
@@ -21,7 +24,7 @@ export default function Home({ me, navigate }) {
       </header>
 
       <nav className="doors">
-        {SECTIONS.map((section) => (
+        {sections.map((section) => (
           <section className="door-section" key={section.label}>
             <div className="section-label">{section.label}</div>
             {section.doors.map((door) => (

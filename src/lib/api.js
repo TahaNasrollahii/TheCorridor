@@ -116,6 +116,28 @@ function devMock(action, payload = {}) {
       return { ok: true, unread: 0 }
     case 'activity':
       return { ok: true }
+    case 'admin_threads':
+      return {
+        ok: true,
+        threads: [
+          { uid: 42, name: 'Mara', username: 'mara_void', alias: 'the hollow one', last_text: 'are you still there?', last_kind: '🌑 JUST WORDS', last_media: null, last_dir: 'out', ts: 1718703900, new: true },
+          { uid: 7, name: 'Ash', username: null, alias: '', last_text: '', last_kind: '🩸 CONFESSION', last_media: 'voice', last_dir: 'out', ts: 1718700300, new: true },
+          { uid: 13, name: null, username: 'echo', alias: '', last_text: 'no one ever does. that’s how they find it.', last_kind: 'reply', last_media: null, last_dir: 'in', ts: 1718600000, new: false },
+          { uid: 99, name: null, username: null, alias: '', last_text: 'i left something here.', last_kind: '🌑 JUST WORDS', last_media: null, last_dir: 'out', ts: 1718500000, new: true },
+        ],
+      }
+    case 'admin_thread':
+      return {
+        ok: true,
+        uid: payload.uid,
+        messages: [
+          { dir: 'out', text: 'i don’t know why i came here.', kind: '🌑 JUST WORDS', ts: 1718700000 },
+          { dir: 'in', text: 'no one ever does. that’s how they find it.', kind: 'reply', ts: 1718703600 },
+          { dir: 'out', text: 'are you still there?', kind: '🌑 JUST WORDS', ts: 1718703900 },
+        ],
+      }
+    case 'admin_reply':
+      return { ok: true }
     default:
       throw new Error(`no dev mock for "${action}"`)
   }

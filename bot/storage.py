@@ -80,6 +80,26 @@ class Store:
     async def all_aliases(self) -> dict[str, str]:
         return await self.r.hgetall(f"{PREFIX}:aliases")
 
+    # ----- identities (Telegram name/username, for the keeper's chat list) -----
+    # Threads are keyed only by uid, so we cache each soul's display identity here
+    # and refresh it whenever they speak (or lazily via get_chat for old chats).
+    async def set_identity(self, uid: int, name: str | None, username: str | None) -> None:
+        await self.r.hset(
+            f"{PREFIX}:identity",
+            str(uid),
+            json.dumps({"name": name, "username": username}),
+        )
+
+    async def all_identities(self) -> dict[int, dict]:
+        raw = await self.r.hgetall(f"{PREFIX}:identity")
+        out: dict[int, dict] = {}
+        for k, v in raw.items():
+            try:
+                out[int(k)] = json.loads(v)
+            except (ValueError, TypeError):
+                continue
+        return out
+
     # ----- counters / senders -----
     async def incr_counter(self) -> int:
         return await self.r.incr(f"{PREFIX}:counter")
@@ -192,6 +212,25 @@ class Store:
     async def get_thread(self, uid: int) -> list[dict]:
         raw = await self.r.lrange(f"{PREFIX}:thread:{uid}", 0, -1)
         return [json.loads(x) for x in raw]
+
+    async def all_thread_uids(self) -> list[int]:
+        """Every soul that has a conversation thread — the keeper's chat list.
+        The ``thread:*`` glob deliberately excludes ``thread_unread:*`` keys
+        (different separator after ``thread``)."""
+        prefix = f"{PREFIX}:thread:"
+        uids = []
+        async for key in self.r.scan_iter(match=f"{prefix}*"):
+            try:
+                uids.append(int(key[len(prefix):]))
+            except ValueError:
+                continue  # ignore any non-numeric stragglers
+        return uids
+
+    async def thread_tail(self, uid: int) -> dict | None:
+        """The last message in a thread — cheap preview for the chat list,
+        avoids loading all THREAD_MAX entries just to show one line."""
+        raw = await self.r.lindex(f"{PREFIX}:thread:{uid}", -1)
+        return json.loads(raw) if raw else None
 
     async def incr_unread(self, uid: int) -> None:
         await self.r.incr(f"{PREFIX}:thread_unread:{uid}")

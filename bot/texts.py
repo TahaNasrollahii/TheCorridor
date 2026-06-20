@@ -263,3 +263,24 @@ CHAT_TEXT = (
     "just the hollow, soft as night —\n"
     "let it out. it's yours. write. ✒️"
 )
+
+# ---- the keeper's reply, wrapped in the dark framing ----
+# Shared by the bot's /reply command, its native-reply handler, and the Mini App
+# admin console so every answer reaches the soul looking identical.
+
+# Single-message form (text-only reply). `{reply}` is the keeper's words.
+# Sent with parse_mode="Markdown".
+KEEPER_REPLY_TEXT = (
+    "a voice returns from the other side of darkness:\n\n"
+    "{reply}\n\n"
+    "─────────────────\n"
+    "the dark spoke. now you may —\n"
+    "reply, if you have something to say."
+)
+
+# Three-part form, used when the answer carries media: an intro line, then the
+# attachment itself, then an outro line.
+KEEPER_REPLY_INTRO = "_a voice returns from the other side of darkness:_"  # Markdown
+KEEPER_REPLY_OUTRO = (  # MarkdownV2
+    "_the dark spoke\\. now you may —\n*reply*, if you have something to say\\._"
+)

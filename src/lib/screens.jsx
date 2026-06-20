@@ -7,6 +7,7 @@ import Countdown from '../screens/Countdown.jsx'
 import Dark from '../screens/Dark.jsx'
 import Fortune from '../screens/Fortune.jsx'
 import Inbox from '../screens/Inbox.jsx'
+import Keeper from '../screens/Keeper.jsx'
 import Letter from '../screens/Letter.jsx'
 import Mirror from '../screens/Mirror.jsx'
 import Mood from '../screens/Mood.jsx'
@@ -27,4 +28,5 @@ export const SCREENS = {
   countdown: Countdown,
   alias: Alias,
   archive: Archive,
+  keeper: Keeper,
 }

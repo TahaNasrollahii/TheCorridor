@@ -36,6 +36,14 @@ export const SECTIONS = [
       { key: 'archive', glyph: '📖', title: 'your archive', sub: 'what the dark remembers of you' },
     ],
   },
+  {
+    // Only the keeper sees this section (Home filters on `me.is_admin`).
+    label: "the keeper's sight",
+    admin: true,
+    doors: [
+      { key: 'keeper', glyph: '👁️‍🗨️', title: 'all chats', sub: 'every voice, and what you answered' },
+    ],
+  },
 ]
 
 // Flat lookup: key -> door metadata (glyph/title/sub), for screen headers.
