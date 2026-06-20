@@ -263,7 +263,7 @@ def main_keyboard() -> InlineKeyboardMarkup:
 # sends its label as plain text; ``REPLY_LABELS`` maps each label back to the
 # command its handler already implements.
 REPLY_LABELS = {
-    "✒️ speak": "chat",
+    "✒️ whisper to Taha": "chat",
     "🌑 a dark quote": "dark",
     "🔮 a fortune": "fortune",
     "🌫️ the mood": "mood",
@@ -283,7 +283,7 @@ def corridor_keyboard() -> ReplyKeyboardMarkup:
     a WEBAPP_URL is configured (reply-keyboard buttons may open Mini Apps)."""
     rows: list[list[KeyboardButton]] = []
 
-    rows.append([KeyboardButton(text="✒️ speak")])
+    rows.append([KeyboardButton(text="✒️ whisper to Taha")])
 
     if WEBAPP_URL:
         rows.append([
@@ -1273,7 +1273,7 @@ async def reply_keyboard_dispatch(
 
     command = REPLY_LABELS[message.text]
     if command == "chat":
-        await chat(message)
+        return await chat(message)
     elif command == "dark":
         await dark_quote(message)
     elif command == "fortune":

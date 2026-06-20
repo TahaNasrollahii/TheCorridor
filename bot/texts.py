@@ -176,7 +176,7 @@ COMMAND_ACTIVITY = {
 
 # Each reply-keyboard label and what tapping it means.
 REPLY_ACTIVITY = {
-    "✒️ speak": '✒️ tapped "speak"',
+    "✒️ whisper to Taha": '✒️ tapped "whisper to Taha"',
     "🌑 a dark quote": '🌑 tapped "a dark quote"',
     "🔮 a fortune": '🔮 tapped "a fortune"',
     "🌫️ the mood": '🌫️ tapped "the mood"',
