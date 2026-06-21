@@ -425,6 +425,46 @@ async def deliver_to_keeper(
     await bot.send_message(chat_id, confirm, reply_markup=corridor_keyboard())
 
 
+async def notify_keeper_regret(
+    bot: Bot, store: Store, *, user_id: int, pending: dict
+) -> None:
+    """A whisper the soul withdrew with 'never mind' still reaches the keeper —
+    the same notice as a real delivery, but flagged as regretted, so nothing
+    confided in the corridor is ever fully lost to them.
+
+    Unlike ``deliver_to_keeper`` this does NOT touch counters, stats or the
+    in-app thread: a regretted whisper was never truly sent, so it must not
+    inflate the archive."""
+    username = pending.get("username") or "no_username"
+    text = pending.get("text") or "[MEDIA]"
+    alias = await store.get_alias(user_id)
+    alias_line = f"🪦 Alias: {alias}\n" if alias else ""
+    full_time, _, _ = get_now_info()
+
+    try:
+        await bot.send_message(
+            ADMIN_ID,
+            f"🚫 REGRETTED WHISPER\n\n"
+            f"👤 Sender: {user_id} (@{username})\n"
+            f"{alias_line}"
+            f"💬 Carried: {text}\n"
+            f"🕰️ {full_time}\n\n"
+            f"⚠️ they chose “never mind” — withdrawn before sending.\n\n"
+            f"To answer anyway:\n/reply {user_id} your message",
+        )
+        # Forward the original so the keeper sees it exactly — text or media.
+        try:
+            await bot.forward_message(
+                chat_id=ADMIN_ID,
+                from_chat_id=int(pending["chat_id"]),
+                message_id=int(pending["message_id"]),
+            )
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
 async def get_stats_text(store: Store) -> str:
     today = tehran_now().strftime("%Y-%m-%d")
     today_count = await store.get_day(today)
@@ -1169,17 +1209,24 @@ async def cb_help(callback: CallbackQuery):
 
 # ================== CANCEL ANY FLOW ==================
 @router.callback_query(F.data == "cancel_flow")
-async def cb_cancel_flow(callback: CallbackQuery, state: FSMContext, store: Store):
+async def cb_cancel_flow(callback: CallbackQuery, bot: Bot, state: FSMContext, store: Store):
     """Back out of any multi-step flow. Clears the FSM state (vow/countdown/
-    ritual/letter/mirror) and drops any pending whisper, so nothing is kept or
-    carried to the keeper. Safe to tap even when nothing is in progress."""
+    ritual/letter/mirror) and drops any pending whisper. Safe to tap even when
+    nothing is in progress.
+
+    A withdrawn *whisper* (a pending message awaiting its type) is the one thing
+    that still reaches the keeper — flagged as regretted — so they see what was
+    written even though the soul chose 'never mind'. Other flows leave nothing
+    pending, so they notify nothing."""
     await state.clear()
-    await store.pop_pending(callback.from_user.id)
+    pending = await store.pop_pending(callback.from_user.id)
     await callback.answer()
     try:
         await callback.message.edit_reply_markup(reply_markup=None)
     except Exception:
         pass
+    if pending:
+        await notify_keeper_regret(bot, store, user_id=callback.from_user.id, pending=pending)
     await callback.message.answer(FLOW_CANCELLED_TEXT, reply_markup=corridor_keyboard())
 
 
