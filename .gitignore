@@ -10,3 +10,7 @@ venv/
 node_modules/
 dist/
 *.local
+
+# Claude Code local settings — can capture machine-specific commands/secrets.
+# A shared .claude/settings.json may be committed; this local one must never be.
+.claude/settings.local.json
