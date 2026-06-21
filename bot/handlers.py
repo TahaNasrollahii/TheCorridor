@@ -273,7 +273,7 @@ def main_keyboard() -> InlineKeyboardMarkup:
 # sends its label as plain text; ``REPLY_LABELS`` maps each label back to the
 # command its handler already implements.
 REPLY_LABELS = {
-    "✒️ whisper to Taha": "chat",
+    "✒️ whisper to Taha": "whisper",
     "🌑 a dark quote": "dark",
     "🔮 a fortune": "fortune",
     "🌫️ the mood": "mood",
@@ -520,9 +520,9 @@ async def help_command(message: Message):
     await message.answer(HELP_TEXT, reply_markup=main_keyboard())
 
 
-# ================== CHAT ==================
-@router.message(Command("chat"))
-async def chat(message: Message):
+# ================== WHISPER ==================
+@router.message(Command("whisper"))
+async def whisper(message: Message):
     # The whisper prompt only needs a way out — "enter the dark"/"speak"/"guide"
     # make no sense once a soul is here to whisper. Typing carries the message;
     # "never mind" backs out.
@@ -1332,8 +1332,8 @@ async def reply_keyboard_dispatch(
         return await handle_all(message, state, bot, store)
 
     command = REPLY_LABELS[message.text]
-    if command == "chat":
-        return await chat(message)
+    if command == "whisper":
+        return await whisper(message)
     elif command == "dark":
         return await dark_quote(message)
     elif command == "fortune":

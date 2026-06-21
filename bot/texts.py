@@ -177,7 +177,7 @@ MESSAGE_TYPES = {
 COMMAND_ACTIVITY = {
     "start": "🚪 entered the dark",
     "help": "📖 opened the guide",
-    "chat": "✒️ opened the corridor",
+    "whisper": "✒️ opened the corridor",
     "confess": "🩸 opened confession",
     "dark": "🌑 asked for a dark quote",
     "fortune": "🔮 asked for a fortune",
@@ -241,7 +241,7 @@ RETURNING_TEXT = (
 HELP_TEXT = (
     "📖 the guide to the corridor:\n\n"
     "✒️ /start — enter the dark\n\n"
-    "💬 /chat — open the corridor and write\n\n"
+    "💬 /whisper — open the corridor and write\n\n"
     "🩸 /confess — send a confession\n"
     "    marked differently. heavier.\n\n"
     "🌑 /dark — receive a dark quote\n\n"
