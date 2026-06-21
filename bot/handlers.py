@@ -43,6 +43,7 @@ from bot.texts import (
     CONFIRM_MESSAGES,
     DARK_QUOTES,
     DARK_REACTIONS,
+    FLOW_CANCELLED_TEXT,
     FORTUNES,
     HELP_TEXT,
     KEEPER_REPLY_INTRO,
@@ -235,6 +236,15 @@ def vow_days_left(vow: dict) -> int:
     return max(0, delta.days)
 
 
+def cancel_keyboard() -> InlineKeyboardMarkup:
+    """A single 'never mind' button attached to every multi-step prompt, so a
+    soul can leave a flow (vow, countdown, ritual, letter, mirror, whisper)
+    without finishing it. Handled by ``cb_cancel_flow``."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🌫️ never mind", callback_data="cancel_flow")]
+    ])
+
+
 def vow_replace_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -332,7 +342,8 @@ def message_type_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🩸 confession", callback_data="type_confession"),
             InlineKeyboardButton(text="🕯️ question", callback_data="type_question"),
             InlineKeyboardButton(text="🌑 just words", callback_data="type_just_words"),
-        ]
+        ],
+        [InlineKeyboardButton(text="🌫️ never mind", callback_data="cancel_flow")],
     ])
 
 
@@ -558,7 +569,8 @@ async def mirror(message: Message, state: FSMContext):
         "🪞\n\n"
         "if the darkness inside you had a shape —\n"
         "what would it be?\n\n"
-        "answer in one word."
+        "answer in one word.",
+        reply_markup=cancel_keyboard(),
     )
 
 
@@ -588,7 +600,8 @@ async def ritual_start(message: Message, state: FSMContext):
         "🕯️ the ritual begins.\n\n"
         "four questions. answer honestly.\n"
         "what is gathered here will be sent to the keeper.\n\n"
-        f"I. {RITUAL_QUESTIONS[0]}"
+        f"I. {RITUAL_QUESTIONS[0]}",
+        reply_markup=cancel_keyboard(),
     )
 
 
@@ -599,7 +612,7 @@ async def ritual_q1(message: Message, state: FSMContext):
     answers.append(message.text or "[no answer]")
     await state.update_data(answers=answers)
     await state.set_state(RitualStates.q2)
-    await message.answer(f"II. {RITUAL_QUESTIONS[1]}")
+    await message.answer(f"II. {RITUAL_QUESTIONS[1]}", reply_markup=cancel_keyboard())
 
 
 @router.message(RitualStates.q2)
@@ -609,7 +622,7 @@ async def ritual_q2(message: Message, state: FSMContext):
     answers.append(message.text or "[no answer]")
     await state.update_data(answers=answers)
     await state.set_state(RitualStates.q3)
-    await message.answer(f"III. {RITUAL_QUESTIONS[2]}")
+    await message.answer(f"III. {RITUAL_QUESTIONS[2]}", reply_markup=cancel_keyboard())
 
 
 @router.message(RitualStates.q3)
@@ -619,7 +632,7 @@ async def ritual_q3(message: Message, state: FSMContext):
     answers.append(message.text or "[no answer]")
     await state.update_data(answers=answers)
     await state.set_state(RitualStates.q4)
-    await message.answer(f"IV. {RITUAL_QUESTIONS[3]}")
+    await message.answer(f"IV. {RITUAL_QUESTIONS[3]}", reply_markup=cancel_keyboard())
 
 
 @router.message(RitualStates.q4)
@@ -670,7 +683,8 @@ async def letter_start(message: Message, state: FSMContext):
         "write a letter to someone\n"
         "you will never send it to.\n\n"
         "take your time.\n"
-        "when you're done — just send. ✒️"
+        "when you're done — just send. ✒️",
+        reply_markup=cancel_keyboard(),
     )
 
 
@@ -721,7 +735,8 @@ async def countdown_start(message: Message, state: FSMContext):
         "then, if you wish, name it after the date or a “|”.\n\n"
         "for example:\n"
         "1405/10/11 زمان مرگم سال\n\n"
-        f"(today is {today})"
+        f"(today is {today})",
+        reply_markup=cancel_keyboard(),
     )
 
 
@@ -806,7 +821,7 @@ async def vow_start(message: Message, state: FSMContext, store: Store):
         return
 
     await state.set_state(VowState.writing)
-    await message.answer(VOW_WRITE_TEXT)
+    await message.answer(VOW_WRITE_TEXT, reply_markup=cancel_keyboard())
 
 
 @router.callback_query(F.data == "vow_keep")
@@ -827,7 +842,7 @@ async def cb_vow_replace(callback: CallbackQuery, state: FSMContext):
     except Exception:
         pass
     await state.set_state(VowState.writing)
-    await callback.message.answer(VOW_WRITE_TEXT)
+    await callback.message.answer(VOW_WRITE_TEXT, reply_markup=cancel_keyboard())
 
 
 @router.message(VowState.writing)
@@ -835,7 +850,7 @@ async def vow_write(message: Message, state: FSMContext):
     text = get_text(message)
     await state.update_data(vow_text=text)
     await state.set_state(VowState.days)
-    await message.answer(VOW_DAYS_TEXT)
+    await message.answer(VOW_DAYS_TEXT, reply_markup=cancel_keyboard())
 
 
 @router.message(VowState.days)
@@ -844,11 +859,11 @@ async def vow_days(message: Message, state: FSMContext, store: Store):
     try:
         days = int(raw)
     except ValueError:
-        await message.answer(VOW_DAYS_ERROR)
+        await message.answer(VOW_DAYS_ERROR, reply_markup=cancel_keyboard())
         return
 
     if not 1 <= days <= 365:
-        await message.answer(VOW_DAYS_ERROR)
+        await message.answer(VOW_DAYS_ERROR, reply_markup=cancel_keyboard())
         return
 
     data = await state.get_data()
@@ -1147,6 +1162,22 @@ async def cb_chat(callback: CallbackQuery):
 async def cb_help(callback: CallbackQuery):
     await callback.answer()
     await callback.message.answer(HELP_TEXT, reply_markup=main_keyboard())
+
+
+# ================== CANCEL ANY FLOW ==================
+@router.callback_query(F.data == "cancel_flow")
+async def cb_cancel_flow(callback: CallbackQuery, state: FSMContext, store: Store):
+    """Back out of any multi-step flow. Clears the FSM state (vow/countdown/
+    ritual/letter/mirror) and drops any pending whisper, so nothing is kept or
+    carried to the keeper. Safe to tap even when nothing is in progress."""
+    await state.clear()
+    await store.pop_pending(callback.from_user.id)
+    await callback.answer()
+    try:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await callback.message.answer(FLOW_CANCELLED_TEXT, reply_markup=corridor_keyboard())
 
 
 # ================== MESSAGE TYPE CALLBACKS ==================

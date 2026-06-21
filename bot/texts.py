@@ -151,6 +151,14 @@ COUNTDOWN_REMINDER_TEXT = (
     "it is here now — whatever it means to you."
 )
 
+# Shown when a soul backs out of a multi-step flow (vow, countdown, ritual,
+# letter, mirror, or an unsent whisper) via the inline "never mind" button.
+FLOW_CANCELLED_TEXT = (
+    "🌫️ the thread dissolves.\n\n"
+    "nothing was kept, nothing was sent.\n"
+    "the corridor waits, as it always does."
+)
+
 RITUAL_QUESTIONS = [
     "what is the last thing you thought about before you came here?",
     "name something you've never said out loud.",

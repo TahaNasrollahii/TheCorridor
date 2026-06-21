@@ -18,7 +18,8 @@
       "Bash(curl *)",
       "Bash(vercel env *)",
       "Bash(REDIS_URL=rediss://default:gQAAAAAAAe7hAAIgcDExNWRkZGE1ZTllNDE0ZmUzOGNiYWZjYTNmZGE1YzA4NQ@right-mackerel-126689.upstash.io:6379 TOKEN=8768516381:AAFp-F1EDNF0xOfbJAl4vt5zXbsN2gYO6Qo python -c ' *)",
-      "Bash(REDIS_URL=rediss://default:gQAAAAAAAe7hAAIgcDExNWRkZGE1ZTllNDE0ZmUzOGNiYWZjYTNmZGE1YzA4NQ@right-mackerel-126689.upstash.io:6379 python -c ' *)"
+      "Bash(REDIS_URL=rediss://default:gQAAAAAAAe7hAAIgcDExNWRkZGE1ZTllNDE0ZmUzOGNiYWZjYTNmZGE1YzA4NQ@right-mackerel-126689.upstash.io:6379 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)"
     ]
   }
 }
