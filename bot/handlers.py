@@ -169,7 +169,7 @@ def parse_persian_countdown(raw: str) -> tuple[datetime, str]:
     ASCII digits, and the month as a number or a Persian month name. Examples
     that all work::
 
-        1405/03/29 | پایان سال
+        1405/03/29 | زمان مرگم سال
         ۱۴۰۵-۱۰-۱۱ the end of the year
         29 خرداد 1405
 
@@ -720,7 +720,7 @@ async def countdown_start(message: Message, state: FSMContext):
         "  • 11 دی 1405\n\n"
         "then, if you wish, name it after the date or a “|”.\n\n"
         "for example:\n"
-        "1405/10/11 پایان سال\n\n"
+        "1405/10/11 زمان مرگم سال\n\n"
         f"(today is {today})"
     )
 
@@ -733,7 +733,7 @@ async def countdown_receive(message: Message, state: FSMContext, store: Store):
         await message.answer(
             "❌ the moment was lost in the dark.\n\n"
             "name a Persian-calendar date, like:\n"
-            "1405/10/11 پایان سال"
+            "1405/10/11 زمان مرگم سال"
         )
         return
 
