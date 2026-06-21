@@ -46,7 +46,7 @@ export default function Countdown({ onBack }) {
       <p className="prompt" style={{ fontSize: '1.05rem' }}>
         name a moment you are counting toward.
         <br />
-        give the date in the Persian calendar.
+        the dark will count the days — and return to you when it arrives.
       </p>
 
       <input
@@ -54,12 +54,17 @@ export default function Countdown({ onBack }) {
         dir="auto"
         value={date}
         maxLength={120}
-        placeholder="example: 1405/10/11 پایان سال"
+        placeholder="1405/10/11 پایان سال"
         onChange={(e) => setDate(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && reckon()}
       />
       <p className="field-hint" style={{ marginBottom: 0 }}>
-        ۱۴۰۵/۱۰/۱۱ · 1405-10-11 · ۱۱ دی ۱۴۰۵
+        <span className="muted">the date first — Persian calendar, as year / month / day.</span>
+        <br />
+        <span className="muted">then a name for the moment, if you wish.</span>
+        <br />
+        <br />
+        accepts:&nbsp; ۱۴۰۵/۱۰/۱۱ · 1405-10-11 · ۱۱ دی ۱۴۰۵
         {today && (
           <>
             <br />
@@ -101,7 +106,11 @@ export default function Countdown({ onBack }) {
             <Unit n={result.hours} label="hours" />
             <Unit n={result.minutes} label="minutes" />
           </div>
-          <p className="muted center">the dark is already counting.</p>
+          <p className="muted center">
+            the dark is counting —
+            <br />
+            and will return to you on the day.
+          </p>
         </div>
       )}
     </Screen>

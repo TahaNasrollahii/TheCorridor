@@ -142,6 +142,15 @@ VOW_REMINDER_TEXT = (
     "the dark remembered. do you?"
 )
 
+COUNTDOWN_REMINDER_TEXT = (
+    "⏳ the moment has come.\n\n"
+    "you once set the dark to count toward this:\n\n"
+    "_{label}_\n"
+    "🗓️ {date}\n\n"
+    "the waiting is over.\n"
+    "it is here now — whatever it means to you."
+)
+
 RITUAL_QUESTIONS = [
     "what is the last thing you thought about before you came here?",
     "name something you've never said out loud.",

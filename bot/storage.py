@@ -15,6 +15,7 @@ Everything that used to live in memory now lives in Redis:
     messages_per_day   -> HASH "corridor:per_day"      (YYYY-MM-DD -> count)
     pending_messages   -> HASH "corridor:pending:<uid>" (the message awaiting a type)
     vows               -> STR  "corridor:vow:<uid>"    (JSON vow awaiting its reminder)
+    countdowns         -> STR  "corridor:countdown:<uid>:<cid>" (JSON moment awaiting its date)
     per-user stats     -> INT  "corridor:user_stat:<uid>:<name>"
     broadcast chats    -> SET  "corridor:broadcast_chats"
 
@@ -167,6 +168,45 @@ class Store:
 
     async def all_vow_keys(self) -> list[str]:
         return [k async for k in self.r.scan_iter(match=f"{PREFIX}:vow:*")]
+
+    # ----- countdowns (a moment the dark counts toward, and reminds you of) -----
+    # Unlike a vow (one per soul, a day-count), a soul may keep several
+    # countdowns at once, each toward an absolute Persian-calendar date. So each
+    # lives in its own key ``corridor:countdown:<uid>:<cid>``; ``cid`` comes from
+    # a shared counter so keys never collide. The cron sweeps them like vows and
+    # delivers one reminder when the moment arrives (``notified`` flips to True).
+    async def next_countdown_id(self) -> int:
+        return await self.r.incr(f"{PREFIX}:countdown_seq")
+
+    async def save_countdown(self, uid: int, cid: int, data: dict) -> None:
+        await self.r.set(f"{PREFIX}:countdown:{uid}:{cid}", json.dumps(data))
+
+    async def get_countdown(self, uid: int, cid: int) -> dict | None:
+        raw = await self.r.get(f"{PREFIX}:countdown:{uid}:{cid}")
+        return json.loads(raw) if raw else None
+
+    async def delete_countdown(self, uid: int, cid: int) -> None:
+        await self.r.delete(f"{PREFIX}:countdown:{uid}:{cid}")
+
+    async def user_countdowns(self, uid: int) -> list[tuple[int, dict]]:
+        """Every countdown a soul is keeping, soonest first."""
+        out: list[tuple[int, dict]] = []
+        async for key in self.r.scan_iter(match=f"{PREFIX}:countdown:{uid}:*"):
+            raw = await self.r.get(key)
+            if not raw:
+                continue
+            try:
+                cid = int(key.rsplit(":", 1)[1])
+            except (ValueError, IndexError):
+                continue
+            out.append((cid, json.loads(raw)))
+        out.sort(key=lambda c: c[1].get("target", 0))
+        return out
+
+    async def all_countdown_keys(self) -> list[str]:
+        # The ``countdown:*`` glob (colon after "countdown") deliberately
+        # excludes the ``countdown_seq`` counter (underscore after "countdown").
+        return [k async for k in self.r.scan_iter(match=f"{PREFIX}:countdown:*")]
 
     # ----- per-user stats -----
     async def incr_user_messages(self, uid: int) -> None:

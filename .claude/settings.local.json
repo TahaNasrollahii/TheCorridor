@@ -14,7 +14,11 @@
       "Bash(TOKEN=123:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 WEBAPP_URL=https://vercel-inc-bot.vercel.app python -c ' *)",
       "Bash(TOKEN=123456:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 PYTHONIOENCODING=utf-8 python -c ' *)",
       "Bash(TOKEN=123456:fake ADMIN_ID=1 REDIS_URL=redis://localhost:6379 WEBAPP_URL=https://x.vercel.app PYTHONIOENCODING=utf-8 python -c ' *)",
-      "Bash(PYTHONIOENCODING=utf-8 python -c \"from bot.texts import KEEPER_REPLY_TEXT, escape_md_v2; print\\(KEEPER_REPLY_TEXT.format\\(reply=escape_md_v2\\('hey there. \\(test_1\\) - done!'\\)\\)\\)\")"
+      "Bash(PYTHONIOENCODING=utf-8 python -c \"from bot.texts import KEEPER_REPLY_TEXT, escape_md_v2; print\\(KEEPER_REPLY_TEXT.format\\(reply=escape_md_v2\\('hey there. \\(test_1\\) - done!'\\)\\)\\)\")",
+      "Bash(curl *)",
+      "Bash(vercel env *)",
+      "Bash(REDIS_URL=rediss://default:gQAAAAAAAe7hAAIgcDExNWRkZGE1ZTllNDE0ZmUzOGNiYWZjYTNmZGE1YzA4NQ@right-mackerel-126689.upstash.io:6379 TOKEN=8768516381:AAFp-F1EDNF0xOfbJAl4vt5zXbsN2gYO6Qo python -c ' *)",
+      "Bash(REDIS_URL=rediss://default:gQAAAAAAAe7hAAIgcDExNWRkZGE1ZTllNDE0ZmUzOGNiYWZjYTNmZGE1YzA4NQ@right-mackerel-126689.upstash.io:6379 python -c ' *)"
     ]
   }
 }

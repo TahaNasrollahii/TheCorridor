@@ -393,9 +393,24 @@ async def _countdown(user: dict, payload: dict) -> dict:
     if target < now:
         return {"label": label, "target_jalali": target_jalali, "passed": True}
 
+    # Persist it so the cron can return on the day itself (parity with the bot).
+    cid = await _store.next_countdown_id()
+    await _store.save_countdown(
+        user["id"],
+        cid,
+        {
+            "label": label,
+            "target": target.timestamp(),
+            "target_jalali": target_jalali,
+            "created_at": now.isoformat(),
+            "notified": False,
+        },
+    )
+
     delta = target - now
     hours, remainder = divmod(delta.seconds, 3600)
     return {
+        "id": cid,
         "label": label,
         "target_jalali": target_jalali,
         "passed": False,
@@ -424,7 +439,18 @@ async def _archive(user: dict, payload: dict) -> dict:
     alias = await _store.get_alias(uid)
     vow = await _store.get_vow(uid)
     vow_out = {"text": vow["text"], "days_left": vow_days_left(vow)} if vow else None
-    return {"alias": alias, "stats": stats, "vow": vow_out}
+
+    now_ts = datetime.now(timezone.utc).timestamp()
+    countdowns_out = [
+        {
+            "id": cid,
+            "label": c.get("label", "the unnamed moment"),
+            "target_jalali": c.get("target_jalali", ""),
+            "days_left": max(0, int((c.get("target", 0) - now_ts) // 86400)),
+        }
+        for cid, c in await _store.user_countdowns(uid)
+    ]
+    return {"alias": alias, "stats": stats, "vow": vow_out, "countdowns": countdowns_out}
 
 
 async def _unread(user: dict, payload: dict) -> dict:

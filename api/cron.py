@@ -1,10 +1,14 @@
-"""Vercel serverless endpoint that delivers due vow reminders.
+"""Vercel serverless endpoint that delivers due vow + countdown reminders.
 
-Vercel is serverless and has no scheduler of its own that we rely on here — an
-external, free cron service (cron-job.org) is configured to GET this endpoint
-once a day. On each call we sweep every stored vow and, for any whose moment has
-come and that hasn't been reminded yet, carry the reminder back to its author
-and mark it done.
+A scheduler GETs this endpoint once a day. The primary scheduler is Vercel's own
+managed cron (see ``vercel.json`` -> ``crons``), which — because a ``CRON_SECRET``
+env var is set — automatically attaches ``Authorization: Bearer <CRON_SECRET>``.
+An external service (cron-job.org) may also call it as a backup; the per-item
+``reminded``/``notified`` flags make repeated sweeps idempotent.
+
+On each call we sweep every stored vow and countdown and, for any whose moment
+has come and that hasn't been delivered yet, carry the reminder back to its
+author and mark it done.
 
 It is guarded by a shared secret: the scheduler must send
 ``Authorization: Bearer <CRON_SECRET>``. If CRON_SECRET is unset the guard is
@@ -29,7 +33,7 @@ from aiogram import Bot  # noqa: E402
 
 from bot.config import CRON_SECRET, TOKEN  # noqa: E402
 from bot.storage import Store, make_redis  # noqa: E402
-from bot.texts import VOW_REMINDER_TEXT  # noqa: E402
+from bot.texts import COUNTDOWN_REMINDER_TEXT, VOW_REMINDER_TEXT  # noqa: E402
 
 # ---- built once per warm container, reused across invocations ----
 _loop = asyncio.new_event_loop()
@@ -73,6 +77,47 @@ async def _run_reminders() -> int:
     return sent
 
 
+async def _run_countdowns() -> int:
+    """Deliver every countdown whose moment has arrived. Returns how many were sent."""
+    now = datetime.now(timezone.utc).timestamp()
+    sent = 0
+
+    for key in await _store.all_countdown_keys():
+        # key looks like "corridor:countdown:<uid>:<cid>"
+        parts = key.split(":")
+        if len(parts) != 4:
+            continue
+        try:
+            uid, cid = int(parts[2]), int(parts[3])
+        except ValueError:
+            continue
+
+        countdown = await _store.get_countdown(uid, cid)
+        if not countdown or countdown.get("notified"):
+            continue
+        if countdown.get("target", 0) > now:
+            continue
+
+        try:
+            await _bot.send_message(
+                uid,
+                COUNTDOWN_REMINDER_TEXT.format(
+                    label=countdown.get("label", "the unnamed moment"),
+                    date=countdown.get("target_jalali", ""),
+                ),
+            )
+        except Exception as exc:
+            # the soul may have blocked the bot — leave it for a later sweep
+            print(f"cron: could not send countdown to {uid}: {exc}", file=sys.stderr)
+            continue
+
+        countdown["notified"] = True
+        await _store.save_countdown(uid, cid, countdown)
+        sent += 1
+
+    return sent
+
+
 class handler(BaseHTTPRequestHandler):
     def _send(self, code: int, body: bytes = b"ok") -> None:
         self.send_response(code)
@@ -90,8 +135,9 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             with _lock:
-                sent = _loop.run_until_complete(_run_reminders())
-            self._send(200, f"reminders sent: {sent}".encode("utf-8"))
+                vows = _loop.run_until_complete(_run_reminders())
+                countdowns = _loop.run_until_complete(_run_countdowns())
+            self._send(200, f"vows: {vows}, countdowns: {countdowns}".encode("utf-8"))
         except Exception as exc:
             print(f"cron error: {exc}", file=sys.stderr)
             self._send(200, b"error")

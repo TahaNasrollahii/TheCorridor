@@ -726,7 +726,7 @@ async def countdown_start(message: Message, state: FSMContext):
 
 
 @router.message(CountdownState.waiting)
-async def countdown_receive(message: Message, state: FSMContext):
+async def countdown_receive(message: Message, state: FSMContext, store: Store):
     await state.clear()
 
     if not message.text:
@@ -765,12 +765,28 @@ async def countdown_receive(message: Message, state: FSMContext):
     hours, remainder = divmod(delta.seconds, 3600)
     minutes = remainder // 60
 
+    # Persist it so the dark can return on the day itself — the cron sweeps
+    # every stored countdown and delivers one reminder once its date arrives.
+    cid = await store.next_countdown_id()
+    await store.save_countdown(
+        message.from_user.id,
+        cid,
+        {
+            "label": label,
+            "target": target.timestamp(),
+            "target_jalali": target_jalali,
+            "created_at": now.isoformat(),
+            "notified": False,
+        },
+    )
+
     await message.answer(
         f"⏳ __{label}__\n"
         f"🗓️ {target_jalali}\n\n"
         f"{days} days, {hours} hours, and {minutes} minutes\n"
         f"stand between you and that moment.\n\n"
-        f"the dark is already counting."
+        f"the dark is already counting —\n"
+        f"and will return to you when the day arrives."
     )
 
 
@@ -869,6 +885,20 @@ async def my_archive(message: Message, store: Store):
     else:
         vow_line = "🩸 no vow burns in the dark"
 
+    countdowns = await store.user_countdowns(user_id)
+    if countdowns:
+        now_ts = datetime.now(timezone.utc).timestamp()
+        moments = []
+        for _cid, c in countdowns:
+            days = max(0, int((c.get("target", 0) - now_ts) // 86400))
+            moments.append(
+                f"   ⏳ _{c.get('label', 'the unnamed moment')}_ — "
+                f"{c.get('target_jalali', '')} ({days} days)"
+            )
+        countdown_line = "🕰️ moments you count toward:\n" + "\n".join(moments)
+    else:
+        countdown_line = "🕰️ no moments counted toward"
+
     await message.answer(
         "📜 what the dark remembers of you:\n\n"
         f"{alias_line}\n"
@@ -876,6 +906,7 @@ async def my_archive(message: Message, store: Store):
         f"🕯️ rituals completed: {stats['rituals']}\n"
         f"📜 letters left unsent: {stats['letters']}\n"
         f"{vow_line}\n"
+        f"{countdown_line}\n"
         f"🚪 first crossed the threshold: {first_seen}\n\n"
         "— nothing here has a name.\n"
         "— only what you chose to leave behind."
