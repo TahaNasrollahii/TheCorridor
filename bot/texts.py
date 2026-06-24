@@ -210,7 +210,7 @@ REPLY_ACTIVITY = {
 # Each button (callback_data) and what tapping it means.
 CALLBACK_ACTIVITY = {
     "cmd_start": "🚪 tapped “enter the dark”",
-    "cmd_chat": "✒️ tapped “speak”",
+    "cmd_chat": "✒️ tapped “whisper”",
     "cmd_help": "📖 tapped “the guide”",
     "type_confession": "🩸 marked a message as a confession",
     "type_question": "🕯️ marked a message as a question",

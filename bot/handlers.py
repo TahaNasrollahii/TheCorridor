@@ -258,7 +258,7 @@ def main_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="🚪 enter the dark", callback_data="cmd_start"),
-            InlineKeyboardButton(text="✒️ speak", callback_data="cmd_chat"),
+            InlineKeyboardButton(text="✒️ whisper", callback_data="cmd_chat"),
         ],
         [
             InlineKeyboardButton(text="📖 the guide", callback_data="cmd_help"),
@@ -563,7 +563,7 @@ async def help_command(message: Message):
 # ================== WHISPER ==================
 @router.message(Command("whisper"))
 async def whisper(message: Message):
-    # The whisper prompt only needs a way out — "enter the dark"/"speak"/"guide"
+    # The whisper prompt only needs a way out — "enter the dark"/"whisper"/"guide"
     # make no sense once a soul is here to whisper. Typing carries the message;
     # "never mind" backs out.
     await message.answer(CHAT_TEXT, reply_markup=cancel_keyboard())
