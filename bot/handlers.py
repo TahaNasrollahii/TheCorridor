@@ -431,6 +431,35 @@ async def deliver_to_keeper(
     await bot.send_message(chat_id, confirm, reply_markup=corridor_keyboard())
 
 
+async def deliver_framed_to_soul(
+    bot: Bot,
+    store: Store,
+    *,
+    soul_uid: int,
+    from_chat_id: int,
+    message_id: int,
+    text: str = "",
+    media: str | None = None,
+) -> None:
+    """Carry the keeper's answer back to a soul — intro, the message itself,
+    outro — and mirror it into their in-app inbox."""
+    await bot.send_message(soul_uid, KEEPER_REPLY_INTRO, parse_mode="Markdown")
+    await bot.copy_message(
+        chat_id=soul_uid,
+        from_chat_id=from_chat_id,
+        message_id=message_id,
+    )
+    await bot.send_message(soul_uid, KEEPER_REPLY_OUTRO, parse_mode="MarkdownV2")
+    await store.add_thread_message(soul_uid, {
+        "dir": "in",
+        "text": text,
+        "kind": "reply",
+        "media": media,
+        "ts": datetime.now(timezone.utc).timestamp(),
+    })
+    await store.incr_unread(soul_uid)
+
+
 async def notify_keeper_regret(
     bot: Bot, store: Store, *, user_id: int, pending: dict
 ) -> None:
@@ -1170,6 +1199,8 @@ async def _begin_relay_picker(message: Message, state: FSMContext, store: Store)
     await state.update_data(
         relay_from_chat_id=message.chat.id,
         relay_message_id=message.message_id,
+        relay_text=message.text or message.caption or "",
+        relay_media=media_kind(message),
         fwd_users=users_data,
         fwd_page=0,
     )
@@ -1234,7 +1265,9 @@ async def process_relay_cancel(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(RelayState.waiting_for_user_selection, F.data.startswith("fwd_to:"))
-async def process_relay_user_selection(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def process_relay_user_selection(
+    callback: CallbackQuery, state: FSMContext, bot: Bot, store: Store,
+):
     if callback.from_user.id != ADMIN_ID:
         await callback.answer("Not authorized.", show_alert=True)
         return
@@ -1250,10 +1283,14 @@ async def process_relay_user_selection(callback: CallbackQuery, state: FSMContex
         return
 
     try:
-        await bot.copy_message(
-            chat_id=target_uid,
+        await deliver_framed_to_soul(
+            bot,
+            store,
+            soul_uid=target_uid,
             from_chat_id=int(from_chat_id),
             message_id=int(msg_id),
+            text=data.get("relay_text") or "",
+            media=data.get("relay_media") or None,
         )
         await callback.message.edit_text(f"✔ Delivered to {target_uid}.")
     except Exception as e:
@@ -1527,29 +1564,15 @@ async def admin_reply_any(message: Message, bot: Bot, store: Store):
         return
 
     try:
-        await bot.send_message(
-            user_id,
-            KEEPER_REPLY_INTRO,
-            parse_mode="Markdown"
-        )
-        await bot.copy_message(
-            chat_id=user_id,
+        await deliver_framed_to_soul(
+            bot,
+            store,
+            soul_uid=user_id,
             from_chat_id=message.chat.id,
             message_id=message.message_id,
+            text=message.text or message.caption or "",
+            media=media_kind(message),
         )
-        await bot.send_message(
-            user_id,
-            KEEPER_REPLY_OUTRO,
-            parse_mode="MarkdownV2"
-        )
-        await store.add_thread_message(user_id, {
-            "dir": "in",
-            "text": message.text or message.caption or "",
-            "kind": "reply",
-            "media": media_kind(message),
-            "ts": datetime.now(timezone.utc).timestamp(),
-        })
-        await store.incr_unread(user_id)
         await message.answer("✔ delivered into the dark")
     except Exception as e:
         await message.answer(f"❌ error:\n{e}")
