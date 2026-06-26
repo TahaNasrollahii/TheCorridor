@@ -99,6 +99,10 @@ class BroadcastState(StatesGroup):
     waiting_for_confirmation = State()
 
 
+class ForwardMessageState(StatesGroup):
+    waiting_for_user_selection = State()
+
+
 # ================== HELPERS ==================
 def get_text(message: Message) -> str:
     return message.text or message.caption or "[MEDIA]"
@@ -1405,6 +1409,112 @@ async def reply_keyboard_dispatch(
         return await help_command(message)
 
     await message.answer("·", reply_markup=corridor_keyboard())
+
+
+# ================== ADMIN FORWARD TO USER ==================
+@router.message(lambda msg: getattr(msg, 'forward_origin', None) is not None, F.from_user.id == ADMIN_ID)
+async def admin_forward_message(message: Message, state: FSMContext, bot: Bot, store: Store):
+    """Admin forwards a message to the bot to send to a specific user."""
+    senders = await store.senders_list()
+    identities = await store.all_identities()
+    
+    if not senders:
+        await message.answer("No users have interacted with the bot yet.")
+        return
+        
+    await state.set_state(ForwardMessageState.waiting_for_user_selection)
+    await state.update_data(forwarded_msg_id=message.message_id)
+    
+    # Store the users list in state for pagination
+    users_data = []
+    for uid in senders:
+        identity = identities.get(uid, {})
+        name = identity.get("name") or "Unknown"
+        users_data.append({"id": uid, "name": name})
+        
+    await state.update_data(fwd_users=users_data, fwd_page=0)
+    
+    keyboard = build_forward_keyboard(users_data, 0)
+    await message.answer("Choose a user to forward this to:", reply_markup=keyboard)
+
+
+def build_forward_keyboard(users_data: list, page: int) -> InlineKeyboardMarkup:
+    PER_PAGE = 10
+    start = page * PER_PAGE
+    end = start + PER_PAGE
+    page_users = users_data[start:end]
+    
+    builder = []
+    for u in page_users:
+        builder.append([InlineKeyboardButton(text=f"{u['name']} ({u['id']})", callback_data=f"fwd_to:{u['id']}")])
+        
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton(text="⬅️ Prev", callback_data=f"fwd_page:{page - 1}"))
+    if end < len(users_data):
+        nav_row.append(InlineKeyboardButton(text="Next ➡️", callback_data=f"fwd_page:{page + 1}"))
+        
+    if nav_row:
+        builder.append(nav_row)
+        
+    builder.append([InlineKeyboardButton(text="Cancel", callback_data="fwd_cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=builder)
+
+
+@router.callback_query(ForwardMessageState.waiting_for_user_selection, F.data.startswith("fwd_page:"))
+async def process_forward_pagination(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("Not authorized.", show_alert=True)
+        return
+        
+    page = int(callback.data.split(":")[1])
+    data = await state.get_data()
+    users_data = data.get("fwd_users", [])
+    
+    await state.update_data(fwd_page=page)
+    keyboard = build_forward_keyboard(users_data, page)
+    await callback.message.edit_reply_markup(reply_markup=keyboard)
+    await callback.answer()
+
+
+@router.callback_query(ForwardMessageState.waiting_for_user_selection, F.data == "fwd_cancel")
+async def process_forward_cancel(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("Not authorized.", show_alert=True)
+        return
+        
+    await state.clear()
+    await callback.message.edit_text("Forward cancelled.")
+    await callback.answer()
+
+
+@router.callback_query(ForwardMessageState.waiting_for_user_selection, F.data.startswith("fwd_to:"))
+async def process_forward_user_selection(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("Not authorized.", show_alert=True)
+        return
+        
+    target_uid = int(callback.data.split(":")[1])
+    data = await state.get_data()
+    msg_id = data.get("forwarded_msg_id")
+    
+    if not msg_id:
+        await callback.answer("Error: Message ID not found.", show_alert=True)
+        await state.clear()
+        return
+        
+    try:
+        await bot.forward_message(
+            chat_id=target_uid,
+            from_chat_id=ADMIN_ID,
+            message_id=msg_id
+        )
+        await callback.message.edit_text(f"✔ Forwarded successfully to {target_uid}.")
+    except Exception as e:
+        await callback.message.edit_text(f"❌ Failed to forward:\n{e}")
+        
+    await state.clear()
+    await callback.answer()
 
 
 # ================== USER → ADMIN ==================
