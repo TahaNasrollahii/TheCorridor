@@ -19,7 +19,7 @@ export default function Home({ me, navigate }) {
       {/* The castle gate — your first sight */}
       <header className="castle-gate">
         <div className="great-candle" aria-hidden="true">🕯️</div>
-        <h1 className="castle-title">the castle</h1>
+        <h1 className="castle-title">the corridor</h1>
         <p className="castle-subtitle">no name is asked. no light is given.</p>
       </header>
 
