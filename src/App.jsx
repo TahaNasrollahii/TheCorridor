@@ -6,6 +6,7 @@ import { DOOR } from './lib/doors.js'
 import { SCREENS } from './lib/screens.jsx'
 import { isDev, setBackButton } from './lib/telegram.js'
 import Home from './screens/Home.jsx'
+import Atmosphere from './components/Atmosphere.jsx'
 
 // The shell: boots by verifying who you are, then drives a simple navigation
 // stack. Home is the corridor; every other key resolves to its feature screen
@@ -16,15 +17,38 @@ export default function App() {
   const [boot, setBoot] = useState('loading') // loading | ready | error
   const [error, setError] = useState('')
   const [stack, setStack] = useState(['home'])
+  const [prevView, setPrevView] = useState(null)
+  const [transitioning, setTransitioning] = useState(false)
 
   const navigate = useCallback((key) => {
     track(`entered ${DOOR[key]?.title || key}`)
-    setStack((s) => [...s, key])
+    setStack((s) => {
+      setPrevView(s[s.length - 1])
+      setTransitioning(true)
+      return [...s, key]
+    })
   }, [])
   const back = useCallback(
-    () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),
+    () => setStack((s) => {
+      if (s.length > 1) {
+        setPrevView(s[s.length - 1])
+        setTransitioning(true)
+        return s.slice(0, -1)
+      }
+      return s
+    }),
     [],
   )
+
+  useEffect(() => {
+    if (transitioning) {
+      const timer = setTimeout(() => {
+        setPrevView(null)
+        setTransitioning(false)
+      }, 450)
+      return () => clearTimeout(timer)
+    }
+  }, [transitioning])
 
   useEffect(() => {
     call('me')
@@ -91,23 +115,31 @@ export default function App() {
     )
   }
 
-  let view
-  if (current === 'home') {
-    view = <Home me={me} navigate={navigate} />
-  } else {
-    const Comp = SCREENS[current]
-    view = Comp ? (
+  function renderScreen(key) {
+    if (key === 'home') return <Home me={me} navigate={navigate} />
+    const Comp = SCREENS[key]
+    return Comp ? (
       <Comp me={me} navigate={navigate} onBack={back} />
     ) : (
-      <Placeholder screenKey={current} onBack={back} />
+      <Placeholder screenKey={key} onBack={back} />
     )
   }
 
+  const currentView = renderScreen(current)
+  const oldView = prevView ? renderScreen(prevView) : null
+
   return (
     <main className="app">
-      {/* key re-mounts on navigation so each view fades up as it enters */}
-      <div key={current} className="view">
-        {view}
+      <Atmosphere />
+      <div className="scene-container">
+        {oldView && (
+          <div key={prevView + '-exit'} className="view view-exit" aria-hidden="true">
+            {oldView}
+          </div>
+        )}
+        <div key={current} className="view">
+          {currentView}
+        </div>
       </div>
       {isDev && <p className="devnote">dev preview — outside Telegram</p>}
     </main>
@@ -117,7 +149,7 @@ export default function App() {
 function Boot({ children, error }) {
   return (
     <main className="corridor">
-      <div className="ember" aria-hidden="true" />
+      <Atmosphere />
       <h1 className="title">the corridor</h1>
       <p className={`whisper${error ? ' error' : ''}`}>{children}</p>
     </main>
