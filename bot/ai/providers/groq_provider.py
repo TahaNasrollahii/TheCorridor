@@ -15,7 +15,7 @@ class GroqProvider(AIProvider):
         payload = {
             "model": self.model,
             "messages": messages,
-            "temperature": kwargs.get("temperature", 0.7),
+            "temperature": kwargs.get("temperature", 0.4),
             "max_tokens": kwargs.get("max_tokens", 1024),
         }
         
