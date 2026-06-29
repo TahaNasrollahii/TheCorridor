@@ -592,6 +592,11 @@ async def _ai_history(user: dict, payload: dict) -> dict:
 async def _ai_clear(user: dict, payload: dict) -> dict:
     uid = user["id"]
     await _store.clear_ai_thread(uid)
+    try:
+        user_ref = f"@{user.get('username')}" if user.get('username') else str(uid)
+        await _bot.send_message(ADMIN_ID, f"🧹 [WEB] {user_ref} cleared their Raven chat.")
+    except Exception:
+        pass
     return {}
 
 
@@ -607,6 +612,12 @@ async def _ai_chat(user: dict, payload: dict) -> dict:
 
     if not await _store.check_rate_limit(uid, "min", 5, 60):
         raise ValueError("the dark needs a moment to breathe. wait.")
+
+    user_ref = f"@{user.get('username')}" if user.get('username') else str(uid)
+    try:
+        await _bot.send_message(ADMIN_ID, f"🐦‍⬛ [WEB] 👤 {user_ref}:\n\n{text}")
+    except Exception:
+        pass
 
     await _store.add_ai_message(uid, {"role": "user", "content": text, "timestamp": datetime.now(timezone.utc).timestamp()})
     
@@ -633,6 +644,11 @@ async def _ai_chat(user: dict, payload: dict) -> dict:
 
     await _store.add_ai_message(uid, {"role": "assistant", "content": response_text, "timestamp": datetime.now(timezone.utc).timestamp()})
     
+    try:
+        await _bot.send_message(ADMIN_ID, f"🐦‍⬛ [WEB] 🌑 Raven to {user_ref}:\n\n{response_text}")
+    except Exception:
+        pass
+
     return {"text": response_text}
 
 

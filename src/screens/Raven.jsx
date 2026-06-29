@@ -55,6 +55,19 @@ export default function Raven({ onBack }) {
     }
   }
 
+  async function clearChat() {
+    if (!window.confirm("are you sure you want to erase these memories?")) return
+    setLoading(true)
+    try {
+      await call('ai_clear')
+      setMessages([])
+    } catch (err) {
+      alert("the dark refused to let go.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Convert AI roles to Thread dir format
   const threadMessages = messages
     .filter((m) => m.role !== 'system') // hide summaries
@@ -124,13 +137,21 @@ export default function Raven({ onBack }) {
                 }
               }}
             />
-            <Button
-              onClick={send}
-              loading={loading}
-              disabled={!text.trim() || loading}
-            >
-              send
-            </Button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <Button
+                style={{ flex: 1 }}
+                onClick={send}
+                loading={loading}
+                disabled={!text.trim() || loading}
+              >
+                send
+              </Button>
+              {messages.length > 0 && (
+                <Button variant="ghost" onClick={clearChat} disabled={loading}>
+                  clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -1654,31 +1654,36 @@ async def reply_keyboard_dispatch(
 
 # ================== RAVEN (AI) ==================
 @router.message(Command("raven"))
-async def raven_start(message: Message, state: FSMContext):
+async def raven_start(message: Message, state: FSMContext, bot: Bot):
     await state.set_state(RavenState.active)
     await message.answer(
         "🐦‍⬛ you have stepped deeper into the library.\n\n"
         "speak to the dark. it is listening.",
         reply_markup=raven_keyboard(),
     )
+    user_ref = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
+    await bot.send_message(ADMIN_ID, f"🐦‍⬛ [BOT] {user_ref} entered Raven.")
 
 
 @router.message(RavenState.active, F.text == "🚪 Leave Raven")
-async def raven_exit(message: Message, state: FSMContext):
+async def raven_exit(message: Message, state: FSMContext, bot: Bot):
     await state.clear()
     await message.answer(
         "you step back into the main corridor.",
         reply_markup=corridor_keyboard(),
     )
+    user_ref = f"@{message.from_user.username}" if message.from_user.username else str(message.from_user.id)
+    await bot.send_message(ADMIN_ID, f"🚪 [BOT] {user_ref} left Raven.")
 
 
 @router.message(RavenState.active)
-async def raven_chat(message: Message, state: FSMContext, store: Store):
+async def raven_chat(message: Message, state: FSMContext, bot: Bot, store: Store):
     from bot.ai.service import AIService
     from bot.prompts.builder import PromptBuilder
 
     uid = message.from_user.id
     text = (message.text or "").strip()
+    user_ref = f"@{message.from_user.username}" if message.from_user.username else str(uid)
 
     if not text:
         return
@@ -1687,6 +1692,12 @@ async def raven_chat(message: Message, state: FSMContext, store: Store):
     if not await store.check_rate_limit(uid, "min", 5, 60):
         await message.answer("the dark needs a moment to breathe. wait.")
         return
+
+    # Notify admin
+    try:
+        await bot.send_message(ADMIN_ID, f"🐦‍⬛ [BOT] 👤 {user_ref}:\n\n{text}")
+    except Exception:
+        pass
 
     # Save user message
     await store.add_ai_message(uid, {"role": "user", "content": text, "timestamp": datetime.now(timezone.utc).timestamp()})
@@ -1699,8 +1710,6 @@ async def raven_chat(message: Message, state: FSMContext, store: Store):
         history = await store.get_ai_thread(uid)
         from bot.config import MAX_CONTEXT_MESSAGES
         if len(history) >= MAX_CONTEXT_MESSAGES:
-            # Simple summarization: keep last 5, replace rest with summary.
-            # (In a real scenario, call AI to summarize. Here we just truncate safely for now to save time/tokens)
             kept = history[-5:]
             summary_msg = {"role": "system", "content": "Conversation history was truncated for brevity.", "timestamp": datetime.now(timezone.utc).timestamp()}
             history = [summary_msg] + kept
@@ -1713,7 +1722,6 @@ async def raven_chat(message: Message, state: FSMContext, store: Store):
         prompt = PromptBuilder.build_system_prompt(time_str=f"{full_time} ({date_str})", alias=alias)
         
         ai_service = AIService()
-        # Ensure we pass the exact format expected by Groq: {"role": "...", "content": "..."}
         clean_history = [{"role": m["role"], "content": m["content"]} for m in history]
 
         response_text = await ai_service.generate_response(prompt, clean_history)
@@ -1723,9 +1731,17 @@ async def raven_chat(message: Message, state: FSMContext, store: Store):
         
         # Escape markdown or use plain if complex
         await placeholder.edit_text(response_text)
+
+        # Notify admin
+        try:
+            await bot.send_message(ADMIN_ID, f"🐦‍⬛ [BOT] 🌑 Raven to {user_ref}:\n\n{response_text}")
+        except Exception:
+            pass
+
     except Exception as e:
         await placeholder.edit_text("the shadows warped your words. try again.")
         print(f"Raven error: {e}")
+
 
 
 # ================== ADMIN FALLBACK ==================
