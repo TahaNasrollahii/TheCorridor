@@ -1617,7 +1617,7 @@ async def reply_keyboard_dispatch(
 
     # Allow leaving Raven even if a state is active
     if command == "raven_exit":
-        return await raven_exit(message, state)
+        return await raven_exit(message, state, bot)
 
     if await state.get_state() is not None:
         return await handle_all(message, state, bot, store)
@@ -1625,7 +1625,7 @@ async def reply_keyboard_dispatch(
     if command == "whisper":
         return await whisper(message)
     elif command == "raven":
-        return await raven_start(message, state)
+        return await raven_start(message, state, bot)
     elif command == "dark":
         return await dark_quote(message)
     elif command == "fortune":
