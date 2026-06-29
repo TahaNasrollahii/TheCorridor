@@ -245,7 +245,7 @@ HELP_TEXT = (
     "✒️ /start — enter the dark\n\n"
     "💬 /whisper — open the corridor and write\n\n"
     "🐦‍⬛ /raven — speak to a solitary consciousness\n\n"
-    "🚪 Enter the Corridor (button) — open the visual corridor\n\n"
+    "🚪 Enter the Corridor — open the visual corridor\n\n"
     "🩸 /confess — send a confession\n"
     "    marked differently. heavier.\n\n"
     "🌑 /dark — receive a dark quote\n\n"

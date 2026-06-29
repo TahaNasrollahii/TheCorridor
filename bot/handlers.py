@@ -297,6 +297,7 @@ REPLY_LABELS = {
     "🪦 your alias": "alias",
     "📖 your archive": "myarchive",
     "👁️ the guide": "help",
+    "🚪 Enter the Corridor": "enter_corridor",
 }
 
 
@@ -314,6 +315,10 @@ def corridor_keyboard() -> ReplyKeyboardMarkup:
                 text="🚪 Enter the Corridor",
                 web_app=WebAppInfo(url=WEBAPP_URL),
             )
+        ])
+    else:
+        rows.append([
+            KeyboardButton(text="🚪 Enter the Corridor")
         ])
 
     rows += [
@@ -1648,6 +1653,11 @@ async def reply_keyboard_dispatch(
         return await my_archive(message, store)
     elif command == "help":
         return await help_command(message)
+    elif command == "enter_corridor":
+        if WEBAPP_URL:
+            return await message.answer("Use the button on the reply keyboard to open the visual corridor.")
+        else:
+            return await message.answer("the visual corridor is closed. the keeper must set a WEBAPP_URL. 🗝️")
 
     await message.answer("·", reply_markup=corridor_keyboard())
 
