@@ -188,11 +188,14 @@ COMMAND_ACTIVITY = {
     "alias": "🪦 set an alias",
     "vow": "🩸 began a vow",
     "myarchive": "📜 opened their archive",
+    "raven": "🐦‍⬛ stepped into the library",
 }
 
 # Each reply-keyboard label and what tapping it means.
 REPLY_ACTIVITY = {
     "✒️ whisper to Taha": '✒️ tapped "whisper to Taha"',
+    "🐦‍⬛ Raven AI": '🐦‍⬛ tapped "Raven AI"',
+    "🚪 Leave Raven": '🚪 tapped "Leave Raven"',
     "🌑 a dark quote": '🌑 tapped "a dark quote"',
     "🔮 a fortune": '🔮 tapped "a fortune"',
     "🌫️ the mood": '🌫️ tapped "the mood"',
@@ -204,7 +207,7 @@ REPLY_ACTIVITY = {
     "🪦 your alias": '🪦 tapped "your alias"',
     "📖 your archive": '📖 tapped "your archive"',
     "👁️ the guide": '👁️ tapped "the guide"',
-    "🚪 open the corridor": '🚪 tapped "open the corridor"',
+    "🚪 Enter the Corridor": '🚪 tapped "Enter the Corridor"',
 }
 
 # Each button (callback_data) and what tapping it means.
@@ -241,6 +244,8 @@ HELP_TEXT = (
     "📖 the guide to the corridor:\n\n"
     "✒️ /start — enter the dark\n\n"
     "💬 /whisper — open the corridor and write\n\n"
+    "🐦‍⬛ /raven — speak to a solitary consciousness\n\n"
+    "🚪 Enter the Corridor (button) — open the visual corridor\n\n"
     "🩸 /confess — send a confession\n"
     "    marked differently. heavier.\n\n"
     "🌑 /dark — receive a dark quote\n\n"

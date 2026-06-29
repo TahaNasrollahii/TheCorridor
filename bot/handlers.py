@@ -311,7 +311,7 @@ def corridor_keyboard() -> ReplyKeyboardMarkup:
     if WEBAPP_URL:
         rows.append([
             KeyboardButton(
-                text="🚪 open the corridor",
+                text="🚪 Enter the Corridor",
                 web_app=WebAppInfo(url=WEBAPP_URL),
             )
         ])
