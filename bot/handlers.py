@@ -1613,12 +1613,19 @@ async def reply_keyboard_dispatch(
     user is mid-ritual/letter/vow/countdown, the text is their answer, so we
     fall through and let the FSM handler take it.
     """
+    command = REPLY_LABELS.get(message.text)
+
+    # Allow leaving Raven even if a state is active
+    if command == "raven_exit":
+        return await raven_exit(message, state)
+
     if await state.get_state() is not None:
         return await handle_all(message, state, bot, store)
 
-    command = REPLY_LABELS[message.text]
     if command == "whisper":
         return await whisper(message)
+    elif command == "raven":
+        return await raven_start(message, state)
     elif command == "dark":
         return await dark_quote(message)
     elif command == "fortune":
