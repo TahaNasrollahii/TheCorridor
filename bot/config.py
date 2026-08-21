@@ -30,8 +30,8 @@ AI_API_KEY = os.getenv("AI_API_KEY", "")
 
 # Tunable AI behavior
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.2"))
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", "1024"))
-MAX_CONTEXT_MESSAGES = int(os.getenv("MAX_CONTEXT_MESSAGES", "15"))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "350"))
+MAX_CONTEXT_MESSAGES = int(os.getenv("MAX_CONTEXT_MESSAGES", "8"))
 
 # Rate limiting and Caching
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "5"))
