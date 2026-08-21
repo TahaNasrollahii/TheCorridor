@@ -1731,7 +1731,7 @@ async def raven_chat(message: Message, state: FSMContext, bot: Bot, store: Store
             pass
 
     except Exception as e:
-        await placeholder.edit_text("the shadows warped your words. try again.")
+        await placeholder.edit_text(f"the shadows warped your words. try again.\n\n(Error: {e})")
         print(f"Raven error: {e}")
 
 

@@ -640,7 +640,7 @@ async def _ai_chat(user: dict, payload: dict) -> dict:
     except Exception as e:
         print(f"RAVEN API ERROR: {e}")
         await _store.set_ai_thread(uid, history[:-1])
-        raise ValueError("the shadows warped your words. try again.")
+        raise ValueError(f"the shadows warped your words. try again. (Error: {e})")
 
     await _store.add_ai_message(uid, {"role": "assistant", "content": response_text, "timestamp": datetime.now(timezone.utc).timestamp()})
     
