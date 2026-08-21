@@ -25,7 +25,7 @@ WEBAPP_URL = os.getenv("WEBAPP_URL", "")
 
 # ================== AI CONFIG ==================
 AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
-AI_MODEL = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
+AI_MODEL = os.getenv("AI_MODEL", "llama3-70b-8192")
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 
 # Tunable AI behavior
