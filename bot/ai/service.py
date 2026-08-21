@@ -36,7 +36,11 @@ class AIService:
                     max_tokens=self.max_tokens,
                 )
                 import re
-                response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+                if "<think>" in response:
+                    if "</think>" in response:
+                        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+                    else:
+                        response = "..." # Thought was cut off
                 return response
             except Exception as e:
                 if attempt == max_retries:
