@@ -35,6 +35,8 @@ class AIService:
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
                 )
+                import re
+                response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
                 return response
             except Exception as e:
                 if attempt == max_retries:
