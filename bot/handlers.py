@@ -1680,6 +1680,20 @@ async def raven_chat(message: Message, state: FSMContext, bot: Bot, store: Store
     if not text:
         return
 
+    if text == "!models":
+        import aiohttp
+        from bot.config import AI_API_KEY
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {AI_API_KEY}"}) as resp:
+                    data = await resp.json()
+                    models = [m.get("id") for m in data.get("data", []) if m.get("id")]
+                    models_list = "\n".join(models) if models else "No models returned."
+                    await message.answer(f"Available Groq models:\n{models_list}")
+        except Exception as e:
+            await message.answer(f"Failed to fetch models: {e}")
+        return
+
     # Check rate limit
     if not await store.check_rate_limit(uid, "min", 5, 60):
         await message.answer("the dark needs a moment to breathe. wait.")
