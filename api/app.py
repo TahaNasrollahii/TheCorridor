@@ -210,8 +210,8 @@ async def _send(user: dict, payload: dict) -> dict:
     if not text and not decoded:
         raise ValueError("nothing to send")
 
-    msg_type = payload.get("type") or "just_words"
-    label = MESSAGE_TYPES.get(msg_type, MESSAGE_TYPES["just_words"])
+    msg_type = payload.get("type")
+    label = MESSAGE_TYPES.get(msg_type, "✒️ WHISPER") if msg_type else "✒️ WHISPER"
 
     full_time, date_str, is_night = get_now_info()
     confirm = random.choice(NIGHT_CONFIRM_MESSAGES if is_night else CONFIRM_MESSAGES)

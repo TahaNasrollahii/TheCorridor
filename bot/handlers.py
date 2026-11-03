@@ -1745,6 +1745,12 @@ async def raven_chat(message: Message, state: FSMContext, bot: Bot, store: Store
             pass
 
     except Exception as e:
+        try:
+            history = await store.get_ai_thread(uid)
+            if history and history[-1].get("role") == "user":
+                await store.set_ai_thread(uid, history[:-1])
+        except Exception:
+            pass
         await placeholder.edit_text(f"the shadows warped your words. try again.\n\n(Error: {e})")
         print(f"Raven error: {e}")
 
@@ -1789,31 +1795,16 @@ async def handle_all(message: Message, state: FSMContext, bot: Bot, store: Store
     if await store.is_blocked(user_id):
         return
 
-    # A reply to one of the bot's own messages is a continuation of the
-    # conversation — carry it straight through without asking what it is.
     replied = message.reply_to_message
-    if replied and replied.from_user and replied.from_user.is_bot:
-        await deliver_to_keeper(
-            bot,
-            store,
-            user_id=user_id,
-            username=message.from_user.username or "no_username",
-            chat_id=message.chat.id,
-            message_id=message.message_id,
-            text=get_text(message),
-            label="↩️ REPLY",
-            media=media_kind(message),
-        )
-        return
-
-    await store.set_pending(user_id, {
-        "chat_id": str(message.chat.id),
-        "message_id": str(message.message_id),
-        "text": get_text(message),
-        "username": message.from_user.username or "no_username",
-        "media": media_kind(message) or "",
-    })
-    await message.answer(
-        "before it arrives —\nwhat does this carry? 🩸",
-        reply_markup=message_type_keyboard(),
+    is_reply = bool(replied and replied.from_user and replied.from_user.is_bot)
+    await deliver_to_keeper(
+        bot,
+        store,
+        user_id=user_id,
+        username=message.from_user.username or "no_username",
+        chat_id=message.chat.id,
+        message_id=message.message_id,
+        text=get_text(message),
+        label="↩️ REPLY" if is_reply else "✒️ WHISPER",
+        media=media_kind(message),
     )

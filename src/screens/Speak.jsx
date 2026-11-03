@@ -7,17 +7,10 @@ import { DOOR } from '../lib/doors.js'
 import { toBase64, tooBig } from '../lib/media.js'
 import { haptic, notify } from '../lib/telegram.js'
 
-const TYPES = [
-  { key: 'confession', glyph: '🩸', label: 'confession' },
-  { key: 'question', glyph: '🕯️', label: 'question' },
-  { key: 'just_words', glyph: '🌑', label: 'just words' },
-]
-
 // The Whispering Chamber — speak words into the dark
 export default function Speak({ onBack }) {
   const d = DOOR.speak
   const [text, setText] = useState('')
-  const [type, setType] = useState(null)
   const [media, setMedia] = useState(null)
   const [mediaError, setMediaError] = useState('')
   const [attaching, setAttaching] = useState(false)
@@ -124,10 +117,10 @@ export default function Speak({ onBack }) {
   }
 
   async function send() {
-    if ((!text.trim() && !media) || !type || loading || recording) return
+    if ((!text.trim() && !media) || loading || recording) return
     setLoading(true)
     try {
-      const payload = { text: text.trim(), type }
+      const payload = { text: text.trim() }
       if (media) {
         payload.media = {
           kind: media.kind,
@@ -140,7 +133,6 @@ export default function Speak({ onBack }) {
       track(media ? `sent a ${media.kind} to the keeper` : 'sent words to the keeper')
       setConfirm(r.confirm)
       setText('')
-      setType(null)
       clearMedia()
       notify('success')
     } catch {
@@ -230,30 +222,12 @@ export default function Speak({ onBack }) {
 
       {mediaError && <p className="whisper error text-center mt-small">{mediaError}</p>}
 
-      <p className="stone-hint">before it arrives — what does this carry?</p>
-      <div className="stone-chips stone-chips-3">
-        {TYPES.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={`stone-chip${type === t.key ? ' active' : ''}`}
-            onClick={() => {
-              haptic('light')
-              setType(t.key)
-            }}
-          >
-            <span className="stone-chip-glyph">{t.glyph}</span>
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </div>
-
       <div className="actions-row">
         <Button
           onClick={send}
           loading={loading}
           loadingText={media ? 'carrying it through...' : 'sending into the dark...'}
-          disabled={(!text.trim() && !media) || !type || recording || attaching}
+          disabled={(!text.trim() && !media) || recording || attaching}
         >
           send into the dark
         </Button>
